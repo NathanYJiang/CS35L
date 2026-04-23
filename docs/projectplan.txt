@@ -1,0 +1,100 @@
+Project Plan
+Description
+Our project will be an application for keeping track of debts within a group of people. Last summer, when my high school friend group went to Japan, we had a boatload of messages scattered around our discord group chat saying who owed who for what. With one convenient and AI-driven interface, we could simplify the debt tracking process and use natural language processing to allow for an easy user flow. We are targeted towards college students who may be more budget conscious and also travel more with friends.
+User stories
+MUST-HAVE:
+Sign up
+As a user, I want to sign up for an account using an email or phone number, password, so that I can securely access my data in the future.
+Given the user visits the sign up page, provides a valid username, password, and phone number, when the user hits the 'Sign Up' button, then the user will receive a confirmation email or text message providing a link to the login page (which relies on the log in user story). If wrong credentials are provided, an error message will appear.
+I - This full story depends on the log in story to be implemented (for the redirection), but the actual sign up page is independent
+N - Yes. Details like whether sign up uses email, phone number, or both, as well as confirmation flow and password requirements, can be adjusted.
+V - Yes. It gives users a way to create an account and securely access their data later.
+E - Yes. The flow and expected behavior are clear enough to estimate, though the confirmation step adds some extra work.
+S - Mostly yes. It is manageable if limited to basic sign up and confirmation, but could grow if extra validation or security requirements are added.
+T - Yes. It can be tested by checking successful sign up, confirmation delivery, and proper error handling for invalid inputs.
+
+Log in
+As a user, I want to be able to log in to my account securely, so that I can access my profile information (depends on the profile page story) and view their groups and outstanding debts.
+Given the user has successfully signed up (depends on sign up story), then when the user visits the login page and enters their email or phone number and password, they should be taken to the app’s home page, a listing of all their groups.
+I - While the ability to log in is dependent on data existing in the database, which will likely only occur after the sign up story has been implemented, and the redirection after login depends on the profile story being implemented, the log in system itself can stand independently. 
+N - Yes. Details like authentication method, session handling, and what page users land on after login can be adjusted.
+V - Yes. It allows users to securely access their personal account and app features.
+E - Yes. The requirements are straightforward enough to estimate.
+S - Yes. The scope is focused on authenticating a user and directing them to the proper page.
+T - Yes. It can be tested with valid and invalid credentials and by verifying correct redirection after login.
+
+Group creation
+As a user, I want to be able to search up other users so that I can add them to a group with shared data in order to share payment data with them. 
+Given that a valid username exists (either in the overall database or on a friends list), when the username is placed in a field, there should be an option to invite them to a group
+I - Independent from sign in, should be able to log in as a guest. 
+N - There are a number of choices the developers can make to implement the search function, buttons, visual interface, etc. 
+V - This feature will allow people to actually share data with relevant people
+E - The feature only relies on the implementation of a basic search button, which allows its development timespan to be estimated
+S - The ability to press a button requires a stack of implementation between user interaction to backend requests, so this cannot be broken down further
+T - Simply visually verifying the existence of an invitation button and its actual ability to call functions will be a sufficient test
+
+Payment additions
+As a group member, I want to be able to log my payments so that I can provide accurate and up-to-date information regarding the overall payment requirements in order to help calculate the final amount of money that is owed by each person.
+Given that
+I - Yes. Logging payments can be implemented independently as long as basic user/group data exists.
+N - Yes. Details like input method, validation, and display can be adjusted.
+V - Yes. It provides clear value by ensuring accurate tracking of payments and fair calculation of amounts owed.
+E - Yes. The feature has well-defined inputs and outputs, making it easy to estimate.
+S - Yes. The scope is limited to recording and storing payment data.
+T - Yes. It can be tested by verifying correct logging, storage, and calculation updates.
+
+Repayment calculations
+As a group member, I want to calculate my repayment amount based on the borrowed amount, interest rate, and repayment period, so that I know how much I need to pay.
+I - independent from individual accounts, not dependent on too many features besides the existing lent money input data.
+N - the exact formula, input, rounding rules, whether or not interest is included, and display format are all open to discussion.
+V - yes, it’s clearly valuable to be able to tell each group member how much they need to pay.
+E - clearly defined inputs and expected outputs, developers can reasonably estimate the effort required.
+S - the scope is limited to computing a repayment amount using specified inputs, making it manageable within a short development cycle.
+T - the output can be calculated and verified against expected results, allowing for clear unit testing.
+
+SHOULD HAVE:
+
+Profile
+As a user, I want to have a profile page that displays my information, so that I can view the stored data and change information such as username and password. 
+Given the user has signed up for an account (depends on the sign in story) and is logged in (depends on log in story), when the user clicks on the ‘Profile’ tab, then the user will see a list of their personal information and update them inside the app.
+I - This depends on the user existing and having logged in, which creates dependencies, but the display of the profile is independent of anything else, only needing to show existing data that was created from those stories
+N - The method with which the data is retrieved is not specified here, so the developer has leeway in selecting specific implementations
+V - The ability to check and change information related to a user’s account will be valuable in instances such as where a username needs to be updated, or a data breach requires a new password
+E - The user story fundamentally requires only a data retrieval and display ability, which are simple functions that any reasonable developer can estimate a time frame for
+S - The retrieval and display of user information on a single page is not able to be split into other user stories
+T - Visually identifying and confirming the display of information is a sufficient test
+
+NICE-TO-HAVE:
+
+Users/friends addition
+As a user, I want to be able to add other users on a list of friends so that I can share payment data with them in order to manage mutual costs.
+Given that a username is present in the database, when I type in their username into a field, then I should see a list of matching users.
+Given a user is present in the database, when I type in their username into a field, then I should have an option to add them to a list of friends.
+I - Yes. Adding friends can be developed as a separate feature, assuming user accounts already exist.
+N - Yes. Details like search behavior, matching logic (exact vs partial), and UI interactions can be adjusted.
+V - Yes. It enables users to connect and share payment data, which is essential for managing group expenses.
+E - Yes. The requirements (search + add functionality) are clear enough to estimate.
+S - Yes. The feature is focused on user search and adding to a friends list.
+T - Yes. It can be tested by verifying search results, adding functionality, and correct updates to the friends list.
+
+Two-factor Authentication
+As a user, I want to have the option to receive a 2FA code for every log-in, so that in case somebody has my email or phone number and password, they cannot access my account using just these credentials.
+Given that the user has signed up for an account and logged in, then when they visit the profile page, they will have an option to activate 2FA using email, phone number, or both, so that when they log in in the future, after entering their credentials, a code will be sent to their email, phone number, or both that will be required before they can be logged in.
+I - This depends on the account creation stories (sign up and log in), and if the profile page story is also implemented, then only then can this work (which is acceptable for this feature)
+N - Email/phone number are standard options that the user expects in 2FA, but the actual protocols and/or implementations that the user does not see are not specified here, with the developer able to select verification techniques and/or interfaces
+V - The option for 2FA will provide more security, which is especially valuable here considering that this is somewhat related to money (even if it does not necessarily directly access bank account information)
+E - 2FA is a common, standard feature that has been implemented so often that there are likely entire preexisting libraries to assist in implementation (either in part or in whole), so implementation is likely the integration of these various libraries, which can be estimated
+S - 2FA as its own feature is seen by the user as a simple toggle (with some input fields), and the implementation stack is not something that can be split into individual user stories
+T - We can easily test this functionality by attempting a login, since we should receive a temporary code that we can log in with (and cannot log in without)
+Milestones
+Milestone 1: Working Skeleton App
+We should have the ability for users to sign in and have some visual representation indicating that they are logged in on some homepage
+This entails the creation of a sign in and log in system, and it is likely that a profile page will also be implemented at this point. 
+
+Milestone 2: Working Group Creation
+We should have the ability for users to search for other users, add them to a friends list, and add them to a group with shared data. 
+Naturally, this should implement group creation and friend addition user stories. 
+
+Milestone 3: Working payment logs/calculations
+We should have the ability for users to input payment logs and the ability for users to calculate the amount of money they owe (or are owed)
+By this milestone, we should have implemented the payment input story and payment calculation story. 
