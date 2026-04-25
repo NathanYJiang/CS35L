@@ -1,0 +1,13 @@
+https://sequencediagram.org/
+title Writing to/from database
+
+User->Database:Register users
+User->Database:Query for user
+activate Database
+User<--Database:Return valid users
+deactivate Database
+User->Database:Add user to group
+Group<-Database:Register addition
+User->Database:Register/remove payment
+Group<-Database:Record
+
