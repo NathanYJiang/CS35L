@@ -32,3 +32,5 @@ bun-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+backend/serviceAccountKey.json

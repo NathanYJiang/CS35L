@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
@@ -6,11 +6,17 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Profile from './pages/Profile';
 import GroupDetails from './pages/GroupDetails';
+import { AuthContext } from './context/AuthContext';
 import './index.css';
 
 function App() {
-  // Mock authentication state (change this to test different views)
-  const isAuthenticated = true;
+  const { user, loading } = useContext(AuthContext);
+
+  if (loading) {
+    return <div className="page-container">Loading...</div>;
+  }
+
+  const isAuthenticated = !!user;
 
   return (
     <Router>

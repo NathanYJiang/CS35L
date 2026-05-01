@@ -1,9 +1,15 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useContext } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
 
 const Navbar = () => {
-  // Mocking auth state for the skeleton
-  const isLoggedIn = true; // Change this to false to see the logged-out state
+  const { user, logout } = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <nav className="navbar">
@@ -11,11 +17,11 @@ const Navbar = () => {
         <Link to="/">endetted</Link>
       </div>
       <div className="navbar-links">
-        {isLoggedIn ? (
+        {user ? (
           <>
             <Link to="/">Home</Link>
             <Link to="/profile">Profile</Link>
-            <button className="logout-btn">Log Out</button>
+            <button onClick={handleLogout} className="logout-btn">Log Out</button>
           </>
         ) : (
           <>
