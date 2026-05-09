@@ -1,6 +1,9 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+
+// 1. Centralized API storage
+const API_BASE_URL = 'http://localhost:5001/api/groups';
 
 const MyGroups = () => {
   const { token, logout } = useContext(AuthContext);
@@ -11,33 +14,55 @@ const MyGroups = () => {
   const [newGroupName, setNewGroupName] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Reusable fetcher
-  const fetchGroups = async () => {
-    const res = await fetch('http://localhost:5001/api/groups', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (res.ok) setGroups(await res.json());
-  };
+  // 2. Improved fetcher using useCallback and error handling
+  const fetchGroups = useCallback(async () => {
+    try {
+      const res = await fetch(API_BASE_URL, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setGroups(data);
+      } else {
+        console.error('Failed to load groups:', res.statusText);
+      }
+    } catch (error) {
+      console.error('Network error while fetching groups:', error);
+    }
+  }, [token]);
 
-  useEffect(() => { fetchGroups(); }, [token]);
+  useEffect(() => { 
+    fetchGroups(); 
+  }, [fetchGroups]);
 
   const handleAddGroup = async (e) => {
     e.preventDefault();
     if (!newGroupName.trim()) return;
 
     setLoading(true);
-    const res = await fetch('http://localhost:5001/api/groups', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ name: newGroupName.trim() }),
-    });
-    
-    if (res.ok) {
-      setNewGroupName('');
-      setModalOpen(false);
-      fetchGroups(); 
+    try {
+      const res = await fetch(API_BASE_URL, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json', 
+          Authorization: `Bearer ${token}` 
+        },
+        body: JSON.stringify({ name: newGroupName.trim() }),
+      });
+      
+      if (res.ok) {
+        setNewGroupName('');
+        setModalOpen(false);
+        fetchGroups(); 
+      } else {
+        console.error('Failed to create group');
+      }
+    } catch (error) {
+      console.error('Error creating group:', error);
+    } finally {
+      // Ensures loading state is cleared even if the request fails
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleLogout = () => {
