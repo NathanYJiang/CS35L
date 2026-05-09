@@ -239,4 +239,39 @@ router.post('/:id/expenses', authenticateToken, async (req, res) => {
   }
 });
 
+// Delete an expense from a group
+router.delete('/:id/expenses/:expenseId', authenticateToken, async (req, res) => {
+  try {
+    const { id: groupId, expenseId } = req.params;
+    const uid = req.user.uid;
+
+    const groupRef = db.collection('groups').doc(groupId);
+    const expenseRef = groupRef.collection('expenses').doc(expenseId);
+    
+    // 1. Get the expense to check who added it
+    const expenseDoc = await expenseRef.get();
+
+    if (!expenseDoc.exists) {
+      return res.status(404).json({ error: 'Expense not found' });
+    }
+
+    const expenseData = expenseDoc.data();
+
+    // 2. Security Check: Only the person who added it can delete it
+    if (expenseData.addedBy !== uid) {
+      return res.status(403).json({ 
+        error: 'Forbidden: You can only delete expenses that you created.' 
+      });
+    }
+
+    // 3. Perform the deletion
+    await expenseRef.delete();
+
+    res.json({ message: 'Expense successfully deleted' });
+  } catch (error) {
+    console.error('Error deleting expense:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

@@ -350,6 +350,28 @@ const GroupDetails = () => {
       });
   };
 
+  const handleDeleteExpense = async (expenseId) => {
+    if (!window.confirm('Are you sure you want to delete this expense?')) return;
+
+    try {
+      const res = await fetch(`http://localhost:5001/api/groups/${id}/expenses/${expenseId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        // Update local state to remove the deleted expense
+        setActivityEntries((prev) => prev.filter((exp) => exp.id !== expenseId));
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Failed to delete expense.');
+      }
+    } catch (err) {
+      console.error('Delete error:', err);
+      alert('Network error while deleting.');
+    }
+  };
+
   return (
     <div className="page-container" style={ds.page}>
       <div style={ds.header}>
@@ -434,27 +456,38 @@ const GroupDetails = () => {
         <section style={ds.activitySection}>
           <h3 style={ds.activityTitle}>Recent Activity</h3>
           <div style={ds.activityList}>
-            {activityEntries.slice(0, 5).map((a) => (
-              (() => {
-                const actorId = a.paidBy || a.addedBy;
-                const entryName = actorId
-                  ? displayName(
-                      members.find((m) => m.id === actorId) || {
-                        id: actorId,
-                        displayName: 'Unknown user',
-                      }
-                    )
-                  : 'Unknown user';
-                return (
-                  <p key={a.id} style={ds.activityRow}>
+          {activityEntries.slice(0, 10).map((a) => { // increased slice to 10 for better visibility
+              const actorId = a.paidBy || a.addedBy;
+              const isCreator = a.addedBy === user?.uid; // Check if current user created it
+              const entryName = actorId
+                ? displayName(
+                    members.find((m) => m.id === actorId) || {
+                      id: actorId,
+                      displayName: 'Unknown user',
+                    }
+                  )
+                : 'Unknown user';
+
+              return (
+                <div key={a.id} style={ds.activityRowContainer}>
+                  <p style={ds.activityRow}>
                     <span style={{ ...ds.activityUser, color: colorForName(entryName) }}>{entryName}</span>
                     <span style={ds.activityMeta}> paid for {a.purpose} </span>
                     <span style={ds.activityAmount}>${a.amount}</span>
                   </p>
-                );
-              })()
-            ))}
-          </div>
+                  
+                  {isCreator && (
+                    <button 
+                      onClick={() => handleDeleteExpense(a.id)}
+                      style={ds.deleteBtn}
+                      title="Delete expense"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              );
+            })}</div>
         </section>
       )}
 
@@ -985,6 +1018,23 @@ const ds = {
     borderRadius: '50%',
     animation: 'spin 0.8s linear infinite',
     margin: '0 auto',
+  },
+  activityRowContainer: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '0.2rem 0',
+  },
+  deleteBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#ff4d4d',
+    cursor: 'pointer',
+    fontSize: '0.85rem',
+    fontWeight: 'bold',
+    padding: '4px 8px',
+    borderRadius: '4px',
+    transition: 'background 0.2s',
   },
 };
 
