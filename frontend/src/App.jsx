@@ -1,10 +1,11 @@
-import React, { useContext } from 'react';
+import { useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
-import Home from './pages/Home';
+import MyGroups from './pages/MyGroups';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Profile from './pages/Profile';
+import Settings from './pages/Settings';
 import GroupDetails from './pages/GroupDetails';
 import { AuthContext } from './context/AuthContext';
 import './index.css';
@@ -24,12 +25,14 @@ function App() {
         <Navbar />
         <main className="main-content">
           <Routes>
-            <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/" />} />
-            <Route path="/signup" element={!isAuthenticated ? <Signup /> : <Navigate to="/" />} />
+            <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/" replace />} />
+            <Route path="/signup" element={!isAuthenticated ? <Signup /> : <Navigate to="/" replace />} />
             
             {/* Protected Routes */}
-            <Route path="/" element={isAuthenticated ? <Home /> : <Navigate to="/login" />} />
+            <Route path="/" element={isAuthenticated ? <MyGroups /> : <Navigate to="/login" replace />} />
+            <Route path="/dashboard" element={<Navigate to="/" replace />} />
             <Route path="/profile" element={isAuthenticated ? <Profile /> : <Navigate to="/login" />} />
+            <Route path="/settings" element={isAuthenticated ? <Settings /> : <Navigate to="/login" />} />
             <Route path="/groups/:id" element={isAuthenticated ? <GroupDetails /> : <Navigate to="/login" />} />
           </Routes>
         </main>
