@@ -9,13 +9,6 @@ This document summarizes UI work, expense flows, and client-side balance logic c
 Example **GroupDetails** view for a trip (**japan**): members row, side-by-side **You owe** / **You are owed** panels with per-person breakdown, **Recent activity**, and **+ Add expense** plus the blue / mint / yellow action row.
 
 ![Group expense dashboard: balances, recent activity, and action buttons](docs/week6-group-dashboard.png)
-
----
-
-## Overview
-
-The focus of this week was a **fintech-inspired interface** for listing groups, managing a trip dashboard, logging expenses with **payer** and **split** metadata, and showing **net balances** with **per-person breakdowns**. Styling moved toward a clean white base with a **blue / mint green / yellow** accent system (solid colors, no gradients in the group card palette).
-
 ---
 
 ## Frontend
