@@ -6,26 +6,6 @@ This document summarizes UI work, expense flows, and client-side balance logic c
 
 ## Screenshot (group dashboard)
 
-Example **GroupDetails** view for a trip (**japan**): members row, side-by-side **You owe** / **You are owed** panels with per-person breakdown, **Recent activity**, and **+ Add expense** plus the blue / mint / yellow action row.
-
-![Group expense dashboard: balances, recent activity, and action buttons](docs/week6-group-dashboard.png)
----
-
-## Frontend
-
-### Routing and home experience
-
-- **`MyGroups`** is the authenticated home (`/`): block-style **group cards** (alternating accent colors) that link to `/groups/:id`.
-- **`/dashboard`** redirects to `/` so older links still work.
-- **Optimistic UI** when creating a group: the new block appears immediately, then syncs with the API; groups are also cached in **`localStorage`** for faster reloads.
-
-### Global theme (`index.css`)
-
-- **Fonts:** **Space Grotesk** for titles, **Inter** for body (Google Fonts).
-- **CSS variables** for primary, secondary (teal), surfaces, borders, and danger color.
-- **Navbar:** **endetted** wordmark uses primary color; nav labels use lowercase styling where requested; **logout** styled as bold text control.
-- **My groups:** scrollable block list; **+ Add group** opens a modal; group blocks use **tone-0 (blue `#007bff`)**, **tone-1 (mint `#42d6a3`)**, **tone-2 (yellow `#ffc107`)** with **dark text on yellow** for contrast.
-
 ### Profile (`Profile.jsx`)
 
 - **Username** display (Firestore / API with Firebase `displayName` fallback).
