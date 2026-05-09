@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 
 const Signup = () => {
   const [username, setUsername] = useState('');
@@ -19,16 +19,22 @@ const Signup = () => {
     try {
       // Create user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const chosenName = username.trim();
+      try {
+        await updateProfile(userCredential.user, { displayName: chosenName });
+      } catch {
+        /* profile still works via Firestore if this fails */
+      }
       const token = await userCredential.user.getIdToken();
 
-      // Create profile in Firestore via our backend
+      // Create profile in Firestore via our backend (same username as signup form)
       const res = await fetch('http://localhost:5001/api/users/register', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ username, phone }),
+        body: JSON.stringify({ username: chosenName, phone }),
       });
       
       const data = await res.json();

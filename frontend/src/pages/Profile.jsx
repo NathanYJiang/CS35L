@@ -1,4 +1,4 @@
-import { useContext, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import { auth } from '../firebase';
@@ -21,6 +21,45 @@ const Profile = () => {
   const [changingPassword, setChangingPassword] = useState(false);
   const [changePasswordError, setChangePasswordError] = useState('');
   const [changePasswordSuccess, setChangePasswordSuccess] = useState('');
+  const [username, setUsername] = useState('');
+  const [editingUsername, setEditingUsername] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
+  const [usernameError, setUsernameError] = useState('');
+  const [usernameSuccess, setUsernameSuccess] = useState('');
+  const [updatingUsername, setUpdatingUsername] = useState(false);
+
+  useEffect(() => {
+    if (!token || !user) return;
+    let ignore = false;
+    const fromAuth = user.displayName?.trim() || '';
+
+    async function loadProfile() {
+      try {
+        const res = await fetch('http://localhost:5001/api/users/me', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json().catch(() => null);
+        if (ignore) return;
+        if (res.ok && data) {
+          const fromDb = typeof data.username === 'string' ? data.username.trim() : '';
+          setUsername(fromDb || fromAuth);
+          setNewUsername(fromDb || fromAuth);
+        } else {
+          setUsername(fromAuth);
+          setNewUsername(fromAuth);
+        }
+      } catch {
+        if (!ignore) {
+          setUsername(fromAuth);
+          setNewUsername(fromAuth);
+        }
+      }
+    }
+    loadProfile();
+    return () => {
+      ignore = true;
+    };
+  }, [token, user]);
 
   const resetChangePasswordForm = () => {
     setCurrentPassword('');
@@ -73,7 +112,52 @@ const Profile = () => {
     }
   };
 
+  const handleUpdateUsername = async (e) => {
+    e.preventDefault();
+    setUsernameError('');
+    setUsernameSuccess('');
+    const clean = newUsername.trim();
+    if (!clean) {
+      setUsernameError('Username cannot be empty.');
+      return;
+    }
+    if (clean === (resolvedUsername || '').trim()) {
+      setEditingUsername(false);
+      return;
+    }
+
+    setUpdatingUsername(true);
+    try {
+      const res = await fetch('http://localhost:5001/api/users/me/username', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ username: clean }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        const msg = data && typeof data.error === 'string' ? data.error : 'Failed to update username.';
+        setUsernameError(msg);
+        return;
+      }
+      const updatedName = (data?.displayName || data?.username || clean).trim();
+      setUsername(updatedName);
+      setNewUsername(updatedName);
+      setEditingUsername(false);
+      setUsernameSuccess('Username updated.');
+    } catch {
+      setUsernameError('Network error while updating username.');
+    } finally {
+      setUpdatingUsername(false);
+    }
+  };
+
   if (!profileData) return <div className="page-container">Loading...</div>;
+
+  const resolvedUsername =
+    username.trim() || user?.displayName?.trim() || '';
 
   return (
     <div className="page-container">
@@ -82,6 +166,40 @@ const Profile = () => {
         <div className="info-group">
           <label>Email</label>
           <p>{profileData.email}</p>
+        </div>
+        <div className="info-group">
+          <label>Username</label>
+          {!editingUsername ? (
+            <p>{resolvedUsername || 'Not set'}</p>
+          ) : (
+            <form className="auth-form" onSubmit={handleUpdateUsername} style={{ marginBottom: 0 }}>
+              <div className="form-group">
+                <input
+                  type="text"
+                  value={newUsername}
+                  onChange={(e) => {
+                    setNewUsername(e.target.value);
+                    setUsernameError('');
+                    setUsernameSuccess('');
+                  }}
+                  placeholder="Enter new username"
+                  required
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button type="button" className="secondary-btn" onClick={() => {
+                  setEditingUsername(false);
+                  setNewUsername(resolvedUsername || '');
+                  setUsernameError('');
+                }}>
+                  Cancel
+                </button>
+                <button type="submit" className="primary-btn" disabled={updatingUsername}>
+                  {updatingUsername ? 'Saving...' : 'Save username'}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
         <div className="info-group">
           <label>User ID</label>
@@ -95,6 +213,26 @@ const Profile = () => {
           <span>Two-Factor Authentication</span>
           <button className="secondary-btn">Enable 2FA (Firebase Auth)</button>
         </div>
+        <div className="action-item mt-10">
+          <span>Username</span>
+          <button
+            type="button"
+            className="secondary-btn"
+            onClick={() => {
+              setEditingUsername((v) => !v);
+              setUsernameError('');
+              setUsernameSuccess('');
+              setNewUsername(resolvedUsername || '');
+            }}
+          >
+            {editingUsername ? 'Close' : 'Change Username'}
+          </button>
+        </div>
+        {(usernameError || usernameSuccess) && (
+          <p style={{ marginTop: '0.5rem', color: usernameError ? 'crimson' : 'green' }}>
+            {usernameError || usernameSuccess}
+          </p>
+        )}
         <div className="action-item mt-10">
           <span>Password</span>
           <button

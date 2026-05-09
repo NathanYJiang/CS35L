@@ -76,15 +76,41 @@ router.get('/:id/members', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'Not authorized' });
     }
     
-    // Fetch user details for each member
-    const memberPromises = groupData.members.map(memberId => 
-      db.collection('users').doc(memberId).get()
+    // Fetch user details for each member and always populate displayName.
+    const members = await Promise.all(
+      groupData.members.map(async (memberId) => {
+        const userDoc = await db.collection('users').doc(memberId).get();
+        const docData = userDoc.exists ? userDoc.data() : {};
+        const username = typeof docData.username === 'string' ? docData.username.trim() : '';
+        const existingDisplayName = typeof docData.displayName === 'string' ? docData.displayName.trim() : '';
+        const email = typeof docData.email === 'string' ? docData.email : '';
+
+        if (existingDisplayName || username) {
+          return {
+            id: memberId,
+            ...docData,
+            displayName: existingDisplayName || username,
+          };
+        }
+
+        try {
+          const authUser = await admin.auth().getUser(memberId);
+          const authDisplayName = (authUser.displayName || '').trim();
+          return {
+            id: memberId,
+            ...docData,
+            displayName: authDisplayName || username || (authUser.email || email || ''),
+            email: email || authUser.email || '',
+          };
+        } catch {
+          return {
+            id: memberId,
+            ...docData,
+            displayName: existingDisplayName || username || email || '',
+          };
+        }
+      })
     );
-    
-    const memberDocs = await Promise.all(memberPromises);
-    const members = memberDocs.map(md => {
-      return { id: md.id, ...md.data() };
-    });
     
     res.json(members);
   } catch (error) {
@@ -118,6 +144,96 @@ router.post('/:id/members', authenticateToken, async (req, res) => {
     });
     
     res.status(201).json({ message: 'User added to group' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all expenses/activity for a group
+router.get('/:id/expenses', authenticateToken, async (req, res) => {
+  try {
+    const groupId = req.params.id;
+    const groupRef = db.collection('groups').doc(groupId);
+    const groupDoc = await groupRef.get();
+
+    if (!groupDoc.exists) return res.status(404).json({ error: 'Group not found' });
+    const groupData = groupDoc.data();
+    if (!groupData.members.includes(req.user.uid)) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    const snapshot = await groupRef.collection('expenses').orderBy('createdAt', 'desc').get();
+    const expenses = [];
+    snapshot.forEach((doc) => {
+      expenses.push({ id: doc.id, ...doc.data() });
+    });
+
+    res.json(expenses);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add an expense to a group (creates activity item)
+router.post('/:id/expenses', authenticateToken, async (req, res) => {
+  try {
+    const groupId = req.params.id;
+    const { amount, purpose, paidBy, splitBetween } = req.body;
+    const numericAmount = Number(amount);
+    const cleanPurpose = typeof purpose === 'string' ? purpose.trim() : '';
+
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+      return res.status(400).json({ error: 'Amount must be greater than 0' });
+    }
+    if (!cleanPurpose) {
+      return res.status(400).json({ error: 'Purpose is required' });
+    }
+
+    const groupRef = db.collection('groups').doc(groupId);
+    const groupDoc = await groupRef.get();
+
+    if (!groupDoc.exists) return res.status(404).json({ error: 'Group not found' });
+    const groupData = groupDoc.data();
+    if (!groupData.members.includes(req.user.uid)) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    const members = Array.isArray(groupData.members) ? groupData.members : [];
+    let paidByUid = typeof paidBy === 'string' && paidBy.trim() ? paidBy.trim() : req.user.uid;
+    if (!members.includes(paidByUid)) {
+      return res.status(400).json({ error: 'Payer must be a member of this group' });
+    }
+
+    let splitIds = [];
+    if (Array.isArray(splitBetween)) {
+      splitIds = [...new Set(splitBetween.filter((id) => typeof id === 'string' && id.trim()))].map((id) => id.trim());
+    }
+    if (splitIds.length === 0) {
+      return res.status(400).json({ error: 'Choose at least one person to split this expense with' });
+    }
+    const invalidSplit = splitIds.find((id) => !members.includes(id));
+    if (invalidSplit) {
+      return res.status(400).json({ error: 'Split list must only include group members' });
+    }
+
+    const expense = {
+      amount: Number(numericAmount.toFixed(2)),
+      purpose: cleanPurpose,
+      addedBy: req.user.uid,
+      paidBy: paidByUid,
+      splitBetween: splitIds,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    const docRef = await groupRef.collection('expenses').add(expense);
+    res.status(201).json({
+      id: docRef.id,
+      amount: expense.amount,
+      purpose: expense.purpose,
+      addedBy: expense.addedBy,
+      paidBy: expense.paidBy,
+      splitBetween: splitIds,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
