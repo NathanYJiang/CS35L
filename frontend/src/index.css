@@ -144,14 +144,14 @@ button {
 }
 
 .primary-btn {
-  background: linear-gradient(135deg, var(--primary-color) 0%, #7181ff 100%);
+  background: var(--primary-color);
   color: white;
   width: 100%;
   box-shadow: 0 10px 24px rgba(91, 108, 255, 0.28);
 }
 
 .primary-btn:hover {
-  background: linear-gradient(135deg, var(--primary-hover) 0%, #6072ff 100%);
+  background: var(--primary-hover);
 }
 
 .secondary-btn {
@@ -346,37 +346,44 @@ button {
   color: #fff;
   border: 0;
   text-decoration: none;
-  box-shadow: 0 8px 20px rgba(42, 64, 149, 0.16);
+  box-shadow: 0 10px 26px rgba(42, 64, 149, 0.18);
 }
 
 .my-groups-block--group:hover {
   text-decoration: none;
-  box-shadow: 0 10px 22px rgba(42, 64, 149, 0.2);
+  box-shadow: 0 14px 32px rgba(42, 64, 149, 0.24);
 }
 
 .my-groups-block--tone-0 {
-  background: #4a7bff;
+  background: #007bff;
+  box-shadow: 0 8px 22px rgba(0, 123, 255, 0.35);
 }
 
 .my-groups-block--tone-0:hover {
-  background: #3f6ff2;
+  background: #0069d9;
+  box-shadow: 0 10px 26px rgba(0, 123, 255, 0.42);
 }
 
 .my-groups-block--tone-1 {
-  background: #f2c94c;
-  color: #1b2340;
+  background: #42d6a3;
+  color: #fff;
+  box-shadow: 0 8px 22px rgba(50, 190, 145, 0.34);
 }
 
 .my-groups-block--tone-1:hover {
-  background: #e6be43;
+  background: #32c28f;
+  box-shadow: 0 10px 26px rgba(50, 190, 145, 0.4);
 }
 
 .my-groups-block--tone-2 {
-  background: #2ecc71;
+  background: #ffc107;
+  color: #212529;
+  box-shadow: 0 8px 22px rgba(255, 193, 7, 0.38);
 }
 
 .my-groups-block--tone-2:hover {
-  background: #27c165;
+  background: #e0a800;
+  box-shadow: 0 10px 26px rgba(255, 193, 7, 0.44);
 }
 
 .my-groups-block--pending {
