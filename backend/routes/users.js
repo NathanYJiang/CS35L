@@ -2,138 +2,57 @@ const express = require('express');
 const admin = require('firebase-admin');
 const { authenticateToken } = require('../middleware/auth');
 const router = express.Router();
+const db = admin.firestore().collection('users');
 
-const db = admin.firestore();
-const normalizeUsername = (value) => (typeof value === 'string' ? value.trim().toLowerCase() : '');
+// Simple wrapper to catch async errors so we can ditch try/catch blocks
+const catchAsync = (fn) => (req, res, next) => fn(req, res, next).catch(next);
 
-// Current user's Firestore profile (username, phone, etc.)
-router.get('/me', authenticateToken, async (req, res) => {
-  try {
-    const uid = req.user.uid;
-    const doc = await db.collection('users').doc(uid).get();
-    if (!doc.exists) {
-      return res.json({
-        id: uid,
-        username: '',
-        email: req.user.email || '',
-        phone: '',
-      });
-    }
-    res.json({ id: doc.id, ...doc.data() });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+// --- Routes ---
 
-// Register user in Firestore (Called by frontend after Firebase Auth signup)
-router.post('/register', authenticateToken, async (req, res) => {
-  try {
-    const { username, phone } = req.body;
-    const uid = req.user.uid;
-    const email = req.user.email;
-    const cleanUsername = typeof username === 'string' ? username.trim() : '';
-    const usernameLower = normalizeUsername(cleanUsername);
+// Get current profile
+router.get('/me', authenticateToken, catchAsync(async (req, res) => {
+  const doc = await db.doc(req.user.uid).get();
+  
+  // Return doc data if it exists, otherwise just the basic auth info
+  res.json(doc.exists ? { id: doc.id, ...doc.data() } : { id: req.user.uid, username: '' });
+}));
 
-    if (!cleanUsername) {
-      return res.status(400).json({ error: 'Username is required' });
-    }
+// Create or Update Profile
+router.post('/profile', authenticateToken, catchAsync(async (req, res) => {
+  const { username, phone } = req.body;
+  const uid = req.user.uid;
 
-    const takenSnap = await db.collection('users')
-      .where('usernameLower', '==', usernameLower)
-      .limit(1)
-      .get();
-    const taken = takenSnap.docs.find((d) => d.id !== uid);
-    if (taken) {
-      return res.status(409).json({ error: 'Username is already taken' });
-    }
+  if (!username?.trim()) return res.status(400).send('Username required');
 
-    const userRef = db.collection('users').doc(uid);
-    await userRef.set({
-      username: cleanUsername,
-      displayName: cleanUsername,
-      usernameLower,
-      email: email,
-      phone: phone || '',
-      friends: []
-    });
+  // Check availability
+  const snapshot = await db.where('usernameLower', '==', username.trim().toLowerCase()).get();
+  const isTaken = snapshot.docs.some(doc => doc.id !== uid);
+  
+  if (isTaken) return res.status(409).send('Username taken');
 
-    try {
-      await admin.auth().updateUser(uid, { displayName: cleanUsername });
-    } catch {
-      // Firestore still has source of truth for display name.
-    }
+  const userData = {
+    username: username.trim(),
+    usernameLower: username.trim().toLowerCase(),
+    email: req.user.email,
+    phone: phone || '',
+    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+  };
 
-    res.status(201).json({ message: 'User profile created in Firestore' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+  await db.doc(uid).set(userData, { merge: true });
+  res.json(userData);
+}));
 
-// Update current user's username (must be globally unique)
-router.patch('/me/username', authenticateToken, async (req, res) => {
-  try {
-    const uid = req.user.uid;
-    const cleanUsername = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
-    const usernameLower = normalizeUsername(cleanUsername);
-    if (!cleanUsername) {
-      return res.status(400).json({ error: 'Username is required' });
-    }
+// Search users
+router.get('/search', authenticateToken, catchAsync(async (req, res) => {
+  const { query } = req.query;
+  if (!query) return res.json([]);
 
-    const takenSnap = await db.collection('users')
-      .where('usernameLower', '==', usernameLower)
-      .limit(1)
-      .get();
-    const taken = takenSnap.docs.find((d) => d.id !== uid);
-    if (taken) {
-      return res.status(409).json({ error: 'Username is already taken' });
-    }
+  const snapshot = await db
+    .where('username', '>=', query)
+    .where('username', '<=', query + '\uf8ff')
+    .limit(10).get();
 
-    const userRef = db.collection('users').doc(uid);
-    await userRef.set(
-      {
-        username: cleanUsername,
-        displayName: cleanUsername,
-        usernameLower,
-      },
-      { merge: true }
-    );
-
-    try {
-      await admin.auth().updateUser(uid, { displayName: cleanUsername });
-    } catch {
-      // Keep going: Firestore update succeeded and UI reads from it.
-    }
-
-    res.json({ message: 'Username updated', username: cleanUsername, displayName: cleanUsername });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Search users by username (simple prefix search in Firestore)
-router.get('/search', authenticateToken, async (req, res) => {
-  try {
-    const { query } = req.query;
-    if (!query) return res.json([]);
-
-    // Firestore prefix search
-    const snapshot = await db.collection('users')
-      .where('username', '>=', query)
-      .where('username', '<=', query + '\uf8ff')
-      .limit(10)
-      .get();
-      
-    const users = [];
-    snapshot.forEach(doc => {
-      if (doc.id !== req.user.uid) {
-        users.push({ id: doc.id, ...doc.data() });
-      }
-    });
-    
-    res.json(users);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+  res.json(snapshot.docs.filter(d => d.id !== req.user.uid).map(d => ({ id: d.id, ...d.data() })));
+}));
 
 module.exports = router;
