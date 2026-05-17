@@ -7,6 +7,7 @@ import Signup from './pages/Signup';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import GroupDetails from './pages/GroupDetails';
+import GroupExpenses from './pages/GroupExpenses';
 import { AuthContext } from './context/AuthContext';
 import './index.css';
 
@@ -34,6 +35,7 @@ function App() {
             <Route path="/profile" element={isAuthenticated ? <Profile /> : <Navigate to="/login" />} />
             <Route path="/settings" element={isAuthenticated ? <Settings /> : <Navigate to="/login" />} />
             <Route path="/groups/:id" element={isAuthenticated ? <GroupDetails /> : <Navigate to="/login" />} />
+            <Route path="/groups/:id/expenses" element={isAuthenticated ? <GroupExpenses /> : <Navigate to="/login" />} />
           </Routes>
         </main>
       </div>

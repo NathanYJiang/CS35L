@@ -269,7 +269,7 @@ const GroupDetails = () => {
           <section style={ds.activitySection}>
             <h3 style={ds.activityTitle}>Recent Activity</h3>
             <div style={ds.activityList}>
-              {activityEntries.slice(0, 10).map(a => {
+              {activityEntries.slice(0, 5).map(a => {
                 const name = nameById(a.paidBy || a.addedBy);
                 return (
                   <div key={a.id} style={ds.activityRowContainer}>
@@ -291,7 +291,13 @@ const GroupDetails = () => {
       <section style={ds.actions}>
         <button style={ds.addExpenseBtn} onClick={() => setShowAddExpense(true)}>+ Add expense</button>
         <div style={ds.secondaryRow}>
-          <button style={{ ...ds.secondaryBtnRow, ...ds.secondaryBtnBlue }}>View Group Expenses</button>
+          <button
+            type="button"
+            style={{ ...ds.secondaryBtnRow, ...ds.secondaryBtnBlue }}
+            onClick={() => navigate(`/groups/${id}/expenses`)}
+          >
+            View Group Expenses
+          </button>
           <button style={{ ...ds.secondaryBtnRow, ...ds.secondaryBtnGreen }}>Personal Tracking</button>
           <button style={{ ...ds.secondaryBtnRow, ...ds.secondaryBtnYellow }}>Settlements</button>
         </div>

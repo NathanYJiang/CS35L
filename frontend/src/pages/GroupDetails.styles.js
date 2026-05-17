@@ -366,6 +366,56 @@ export const ds = {
     borderRadius: '4px',
     transition: 'background 0.2s',
   },
+  allExpensesTitle: {
+    margin: 0,
+    fontSize: '1.55rem',
+    fontWeight: 800,
+    color: 'var(--text-color)',
+    letterSpacing: '-0.02em',
+    fontFamily: 'var(--font-title)',
+    textTransform: 'lowercase',
+  },
+  allExpensesGroupName: {
+    margin: '0 0 0.25rem',
+    fontSize: '0.88rem',
+    color: 'var(--light-text)',
+    fontWeight: 600,
+  },
+  allExpensesSection: {
+    flex: 1,
+    minHeight: 0,
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  allExpensesScroll: {
+    flex: 1,
+    maxHeight: 'min(62vh, 520px)',
+    overflowY: 'auto',
+    overflowX: 'hidden',
+    paddingRight: '0.35rem',
+    WebkitOverflowScrolling: 'touch',
+  },
+  allExpensesList: {
+    listStyle: 'none',
+    margin: 0,
+    padding: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.5rem',
+  },
+  allExpensesItem: {
+    background: 'var(--card-bg)',
+    border: '1px solid var(--border-color)',
+    borderRadius: '10px',
+    padding: '0.65rem 0.85rem',
+    boxShadow: '0 1px 3px rgba(42, 64, 149, 0.06)',
+  },
+  allExpensesCount: {
+    margin: '0.75rem 0 0',
+    fontSize: '0.82rem',
+    color: 'var(--light-text)',
+    textAlign: 'center',
+  },
 };
 
 /* ─── Modal styles (ms) ──────────────────────────────────────────────────────── */
