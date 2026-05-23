@@ -2,6 +2,7 @@ import { useContext, useEffect, useMemo, useState } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import { auth } from '../firebase';
+import { API } from '../config/api';
 
 const Profile = () => {
   const { user, token } = useContext(AuthContext);
@@ -35,7 +36,7 @@ const Profile = () => {
 
     async function loadProfile() {
       try {
-        const res = await fetch('http://localhost:5001/api/users/me', {
+        const res = await fetch(`${API.users}/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json().catch(() => null);
@@ -128,7 +129,7 @@ const Profile = () => {
 
     setUpdatingUsername(true);
     try {
-      const res = await fetch('http://localhost:5001/api/users/me/username', {
+      const res = await fetch(`${API.users}/me/username`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

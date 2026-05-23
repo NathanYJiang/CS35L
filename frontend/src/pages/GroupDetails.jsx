@@ -2,6 +2,8 @@ import { useState, useEffect, useContext, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { ds, ms } from './GroupDetails.styles';
+import LoadingSpinner from '../components/LoadingSpinner';
+import { API } from '../config/api';
 
 /* ─── Add Member Modal ─────────────────────────────────────────────────────── */
 const AddMemberModal = ({ groupId, token, onClose, onAdded }) => {
@@ -19,7 +21,7 @@ const AddMemberModal = ({ groupId, token, onClose, onAdded }) => {
     setResults([]);
     setNotice(null);
     try {
-      const res = await fetch(`http://localhost:5001/api/users/search?query=${encodeURIComponent(q)}`, {
+      const res = await fetch(API.userSearch(q), {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json().catch(() => null);
@@ -36,7 +38,7 @@ const AddMemberModal = ({ groupId, token, onClose, onAdded }) => {
   const addUser = async (userId, username) => {
     setAdding(userId);
     try {
-      const res = await fetch(`http://localhost:5001/api/groups/${groupId}/members`, {
+      const res = await fetch(API.members(groupId), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ userId }),
@@ -100,9 +102,9 @@ const GroupDetails = () => {
     const headers = { Authorization: `Bearer ${token}` };
     try {
       const [gRes, mRes, eRes] = await Promise.all([
-        fetch(`http://localhost:5001/api/groups/${id}`, { headers }),
-        fetch(`http://localhost:5001/api/groups/${id}/members`, { headers }),
-        fetch(`http://localhost:5001/api/groups/${id}/expenses`, { headers }),
+        fetch(API.group(id),    { headers }),
+        fetch(API.members(id),  { headers }),
+        fetch(API.expenses(id), { headers }),
       ]);
       if (gRes.ok) setGroup(await gRes.json());
       if (mRes.ok) setMembers(await mRes.json());
@@ -182,7 +184,7 @@ const GroupDetails = () => {
     if (!purpose || !Number(amount)) return setExpenseForm(p => ({ ...p, error: 'Check purpose and amount.' }));
 
     try {
-      const res = await fetch(`http://localhost:5001/api/groups/${id}/expenses`, {
+      const res = await fetch(API.expenses(id), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ amount: Number(amount), purpose, paidBy, splitBetween }),
@@ -197,18 +199,14 @@ const GroupDetails = () => {
 
   const handleDeleteExpense = async (eid) => {
     if (!window.confirm('Are you sure?')) return;
-    const res = await fetch(`http://localhost:5001/api/groups/${id}/expenses/${eid}`, {
+    const res = await fetch(API.expense(id, eid), {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
     });
     if (res.ok) setActivityEntries(prev => prev.filter(e => e.id !== eid));
   };
 
-  if (!group) return (
-    <div className="page-container" style={{ textAlign: 'center', paddingTop: '3rem' }}>
-      <div style={ds.spinner} /><p style={{ color: 'var(--light-text)', marginTop: '1rem' }}>Loading trip…</p>
-    </div>
-  );
+  if (!group) return <LoadingSpinner message="Loading trip…" />;
 
   return (
     <div className="page-container" style={ds.page}>

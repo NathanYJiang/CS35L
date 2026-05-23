@@ -1,7 +1,8 @@
 import { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
+import { API } from '../config/api';
 
-const API_BASE = 'http://localhost:5001/api/users';
+const API_BASE = API.users;
 
 const defaultSettings = {
   notifications: {

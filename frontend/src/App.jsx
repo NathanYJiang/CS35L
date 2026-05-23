@@ -1,6 +1,7 @@
 import { useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
+import LoadingSpinner from './components/LoadingSpinner';
 import MyGroups from './pages/MyGroups';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -14,7 +15,7 @@ function App() {
   const { user, loading } = useContext(AuthContext);
 
   if (loading) {
-    return <div className="page-container">Loading...</div>;
+    return <LoadingSpinner message="Loading…" />;
   }
 
   const isAuthenticated = !!user;

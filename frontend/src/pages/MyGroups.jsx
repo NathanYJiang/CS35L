@@ -1,9 +1,11 @@
 import { useState, useEffect, useContext, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import { API } from '../config/api';
 
-// 1. Centralized API storage
-const API_BASE_URL = 'http://localhost:5001/api/groups';
+// API_BASE_URL now lives in src/config/api.js — import from there so the
+// host/port is defined in a single place across the whole frontend.
+const API_BASE_URL = API.groups;
 
 const MyGroups = () => {
   const { token, logout } = useContext(AuthContext);

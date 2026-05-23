@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { API } from '../config/api';
 
 const Signup = () => {
   const [username, setUsername] = useState('');
@@ -28,7 +29,7 @@ const Signup = () => {
       const token = await userCredential.user.getIdToken();
 
       // Create profile in Firestore via our backend (same username as signup form)
-      const res = await fetch('http://localhost:5001/api/users/register', {
+      const res = await fetch(`${API.users}/register`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
