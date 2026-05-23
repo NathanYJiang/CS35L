@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ms } from '../pages/GroupDetails.styles.js';
+import styles from '../pages/GroupDetails.module.css';
 
 const AddMemberModal = ({ groupId, token, onClose, onAdded }) => {
   const [query, setQuery] = useState('');
@@ -50,25 +50,32 @@ const AddMemberModal = ({ groupId, token, onClose, onAdded }) => {
   };
 
   return (
-    <div style={ms.overlay} onClick={onClose}>
-      <div style={ms.sheet} onClick={e => e.stopPropagation()}>
-        <div style={ms.sheetHandle} />
-        <div style={ms.sheetHeader}>
-          <h3 style={ms.sheetTitle}>Add Member</h3>
-          <button style={ms.closeBtn} onClick={onClose}>✕</button>
+    <div className={styles.overlay} onClick={onClose}>
+      <div className={styles.sheet} onClick={e => e.stopPropagation()}>
+        <div className={styles.sheetHandle} />
+        <div className={styles.sheetHeader}>
+          <h3 className={styles.sheetTitle}>Add Member</h3>
+          <button className={styles.closeBtn} onClick={onClose}>✕</button>
         </div>
-        <p style={ms.sheetSub}>Search by username to invite someone to this group.</p>
-        <form onSubmit={search} style={ms.searchRow}>
-          <input style={ms.searchInput} placeholder="Username…" value={query} onChange={e => { setQuery(e.target.value); setNotice(null); }} autoFocus />
-          <button type="submit" style={ms.searchBtn} disabled={loading}>{loading ? '…' : 'Search'}</button>
+        <p className={styles.sheetSub}>Search by username to invite someone to this group.</p>
+        <form onSubmit={search} className={styles.searchRow}>
+          <input className={styles.searchInput} placeholder="Username…" value={query} onChange={e => { setQuery(e.target.value); setNotice(null); }} autoFocus />
+          <button type="submit" className={styles.searchBtn} disabled={loading}>{loading ? '…' : 'Search'}</button>
         </form>
-        {notice && <p style={{ ...ms.feedback, color: notice.type === 'error' ? '#c62828' : 'var(--primary-color)' }}>{notice.message}</p>}
-        <ul style={ms.resultList}>
+        {notice && (
+          <p 
+            className={styles.feedback} 
+            style={{ color: notice.type === 'error' ? '#c62828' : 'var(--primary-color)' }}
+          >
+            {notice.message}
+          </p>
+        )}
+        <ul className={styles.resultList}>
           {results.map(u => (
-            <li key={u.id} style={ms.resultItem}>
-              <div style={ms.resultAvatar}>{(u.username || u.email || '?')[0].toUpperCase()}</div>
-              <span style={ms.resultName}>{u.username || u.email}</span>
-              <button style={ms.addBtn} onClick={() => addUser(u.id, u.username || u.email)} disabled={adding === u.id}>{adding === u.id ? '…' : 'Add'}</button>
+            <li key={u.id} className={styles.resultItem}>
+              <div className={styles.resultAvatar}>{(u.username || u.email || '?')[0].toUpperCase()}</div>
+              <span className={styles.resultName}>{u.username || u.email}</span>
+              <button className={styles.addBtn} onClick={() => addUser(u.id, u.username || u.email)} disabled={adding === u.id}>{adding === u.id ? '…' : 'Add'}</button>
             </li>
           ))}
         </ul>

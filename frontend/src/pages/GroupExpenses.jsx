@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { ds } from './GroupDetails.styles';
+import styles from './GroupDetails.module.css';
 
 const API = 'http://localhost:5001/api';
 
@@ -89,47 +89,51 @@ const GroupExpenses = () => {
   if (loading) {
     return (
       <div className="page-container" style={{ textAlign: 'center', paddingTop: '3rem' }}>
-        <div style={ds.spinner} />
+        {/* Dynamic spinner class from CSS Module */}
+        <div className={styles.spinner} />
         <p style={{ color: 'var(--light-text)', marginTop: '1rem' }}>Loading expenses…</p>
       </div>
     );
   }
 
   return (
-    <div className="page-container" style={ds.page}>
-      <div style={ds.header}>
-        <button type="button" style={ds.backBtn} onClick={() => navigate(`/groups/${id}`)}>
+    <div className="page-container" className={styles.page}>
+      <div className={styles.header}>
+        <button type="button" className={styles.backBtn} onClick={() => navigate(`/groups/${id}`)}>
           ← Back to group
         </button>
         {group?.name ? (
-          <p style={ds.allExpensesGroupName}>{group.name}</p>
+          <p className={styles.allExpensesGroupName}>{group.name}</p>
         ) : null}
-        <h1 style={ds.allExpensesTitle}>all group expenses</h1>
+        <h1 className={styles.allExpensesTitle}>all group expenses</h1>
       </div>
 
-      {error ? <p style={ds.expenseError}>{error}</p> : null}
+      {error ? <p className={styles.expenseError}>{error}</p> : null}
 
-      <section style={ds.allExpensesSection}>
+      <section className={styles.allExpensesSection}>
         {expenses.length === 0 ? (
-          <p style={ds.balanceBreakdownEmpty}>No expenses yet. Add one from the group page.</p>
+          <p className={styles.balanceBreakdownEmpty}>No expenses yet. Add one from the group page.</p>
         ) : (
-          <div style={ds.allExpensesScroll}>
-            <ul style={ds.allExpensesList}>
+          <div className={styles.allExpensesScroll}>
+            <ul className={styles.allExpensesList}>
               {expenses.map((a) => {
                 const name = nameById(a.paidBy || a.addedBy);
                 return (
-                  <li key={a.id} style={ds.allExpensesItem}>
-                    <div style={ds.activityRowContainer}>
-                      <p style={ds.activityRow}>
-                        <span style={{ ...ds.activityUser, color: colorForName(name) }}>{name}</span>
-                        <span style={ds.activityMeta}> paid for {a.purpose} </span>
-                        <span style={ds.activityAmount}>${a.amount}</span>
+                  <li key={a.id} className={styles.allExpensesItem}>
+                    <div className={styles.activityRowContainer}>
+                      <p className={styles.activityRow}>
+                        {/* We keep inline 'style' only for dynamic palette coloring */}
+                        <span style={{ color: colorForName(name) }} className={styles.activityUser}>
+                          {name}
+                        </span>
+                        <span className={styles.activityMeta}> paid for {a.purpose} </span>
+                        <span className={styles.activityAmount}>${a.amount}</span>
                       </p>
                       {a.addedBy === user?.uid ? (
                         <button
                           type="button"
                           onClick={() => handleDeleteExpense(a.id)}
-                          style={ds.deleteBtn}
+                          className={styles.deleteBtn}
                           aria-label="Delete expense"
                         >
                           ✕
@@ -143,7 +147,7 @@ const GroupExpenses = () => {
           </div>
         )}
         {expenses.length > 0 ? (
-          <p style={ds.allExpensesCount}>
+          <p className={styles.allExpensesCount}>
             {expenses.length} transaction{expenses.length === 1 ? '' : 's'}
           </p>
         ) : null}

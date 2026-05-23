@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ds } from '../pages/GroupDetails.styles';
+import styles from '../pages/GroupDetails.module.css'; 
 
 const AddExpenseModal = ({ groupId, token, user, orderedMembers, getDisplayName, onClose, onSuccess }) => {
   const [expenseForm, setExpenseForm] = useState({ 
@@ -34,51 +34,75 @@ const AddExpenseModal = ({ groupId, token, user, orderedMembers, getDisplayName,
   };
 
   return (
-    <div style={ds.expenseOverlay} onClick={onClose}>
-      <section style={ds.expenseModal} onClick={e => e.stopPropagation()}>
-        <div style={ds.expenseModalHeader}>
-          <h3 style={ds.sectionTitle}>Add Expense</h3>
-          <button style={ds.expenseCloseBtn} onClick={onClose}>✕</button>
+    <div className={styles.expenseOverlay} onClick={onClose}>
+      <section className={styles.expenseModal} onClick={e => e.stopPropagation()}>
+        <div className={styles.expenseModalHeader}>
+          <h3 className={styles.sectionTitle}>Add Expense</h3>
+          <button className={styles.expenseCloseBtn} onClick={onClose}>✕</button>
         </div>
-        <form onSubmit={handleAddExpense} style={ds.expenseForm}>
-          <div style={ds.expensePeopleRow}>
-            <div style={ds.expensePeopleCol}>
-              <span style={ds.expenseFieldLabel}>Paid by</span>
-              <div style={ds.memberChipRow}>
-                {orderedMembers.map(m => (
-                  <button key={m.id} type="button" 
-                    style={{ ...ds.memberChip, ...(expenseForm.paidBy === m.id ? ds.memberChipActive : {}) }}
-                    onClick={() => setExpenseForm(p => ({ ...p, paidBy: m.id }))}
-                  >+ {getDisplayName(m)}</button>
-                ))}
+        <form onSubmit={handleAddExpense} className={styles.expenseForm}>
+          <div className={styles.expensePeopleRow}>
+            <div className={styles.expensePeopleCol}>
+              <span className={styles.expenseFieldLabel}>Paid by</span>
+              <div className={styles.memberChipRow}>
+                {orderedMembers.map(m => {
+                  const isActive = expenseForm.paidBy === m.id;
+                  return (
+                    <button 
+                      key={m.id} 
+                      type="button" 
+                      className={`${styles.memberChip} ${isActive ? styles.memberChipActive : ''}`}
+                      onClick={() => setExpenseForm(p => ({ ...p, paidBy: m.id }))}
+                    >
+                      + {getDisplayName(m)}
+                    </button>
+                  );
+                })}
               </div>
             </div>
-            <div style={ds.expensePeopleCol}>
-              <span style={ds.expenseFieldLabel}>Split between</span>
-              <div style={ds.memberChipRow}>
+            <div className={styles.expensePeopleCol}>
+              <span className={styles.expenseFieldLabel}>Split between</span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}> {/* Kept inline since parent layout is safe, but can match memberChipRow */}
                 {orderedMembers.map(m => {
                   const active = expenseForm.splitBetween.includes(m.id);
                   return (
-                    <button key={m.id} type="button" 
-                      style={{ ...ds.memberChip, ...(active ? ds.memberChipActive : {}) }}
+                    <button 
+                      key={m.id} 
+                      type="button" 
+                      className={`${styles.memberChip} ${active ? styles.memberChipActive : ''}`}
                       onClick={() => setExpenseForm(p => ({
                         ...p,
                         splitBetween: active ? (p.splitBetween.length > 1 ? p.splitBetween.filter(id => id !== m.id) : p.splitBetween) : [...p.splitBetween, m.id]
                       }))}
-                    >{active ? '✓' : '+'} {getDisplayName(m)}</button>
+                    >
+                      {active ? '✓' : '+'} {getDisplayName(m)}
+                    </button>
                   );
                 })}
               </div>
             </div>
           </div>
-          <p style={ds.expenseHint}>Who paid is the card or cash outlay. Split between is everyone who should owe a share.</p>
-          <div style={ds.expenseInlineRow}>
-            <input type="number" step="0.01" placeholder="Amount" value={expenseForm.amount} onChange={e => setExpenseForm(p => ({ ...p, amount: e.target.value }))} style={{ ...ds.expenseInput, ...ds.expenseInputAmount }} />
-            <input type="text" placeholder="Purpose" value={expenseForm.purpose} onChange={e => setExpenseForm(p => ({ ...p, purpose: e.target.value }))} style={{ ...ds.expenseInput, ...ds.expenseInputPurpose }} />
+          <p className={styles.expenseHint}>Who paid is the card or cash outlay. Split between is everyone who should owe a share.</p>
+          <div className={styles.expenseInlineRow}>
+            <input 
+              type="number" 
+              step="0.01" 
+              placeholder="Amount" 
+              value={expenseForm.amount} 
+              onChange={e => setExpenseForm(p => ({ ...p, amount: e.target.value }))} 
+              className={`${styles.expenseInput} ${styles.expenseInputAmount}`} 
+            />
+            <input 
+              type="text" 
+              placeholder="Purpose" 
+              value={expenseForm.purpose} 
+              onChange={e => setExpenseForm(p => ({ ...p, purpose: e.target.value }))} 
+              className={`${styles.expenseInput} ${styles.expenseInputPurpose}`} 
+            />
           </div>
-          {expenseForm.error && <p style={ds.expenseError}>{expenseForm.error}</p>}
-          <div style={ds.expenseActions}>
-            <button type="button" style={ds.expenseCancelBtn} onClick={onClose}>Cancel</button>
+          {expenseForm.error && <p className={styles.expenseError}>{expenseForm.error}</p>}
+          <div className={styles.expenseActions}>
+            <button type="button" className={styles.expenseCancelBtn} onClick={onClose}>Cancel</button>
             <button type="submit" className="primary-btn">Save Expense</button>
           </div>
         </form>
