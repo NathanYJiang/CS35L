@@ -1,84 +1,11 @@
-import { useState, useEffect, useContext, useRef, useMemo } from 'react';
+import { useState, useEffect, useContext, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { ds, ms } from './GroupDetails.styles';
+import AddMemberModal from '../components/AddMemberModal';
+import AddExpenseModal from '../components/AddExpenseModal';
 
-/* ─── Add Member Modal ─────────────────────────────────────────────────────── */
-const AddMemberModal = ({ groupId, token, onClose, onAdded }) => {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [adding, setAdding] = useState(null);
-  const [notice, setNotice] = useState(null);
 
-  const search = async (e) => {
-    e.preventDefault();
-    const q = query.trim();
-    if (!q) return;
-    setLoading(true);
-    setResults([]);
-    setNotice(null);
-    try {
-      const res = await fetch(`http://localhost:5001/api/users/search?query=${encodeURIComponent(q)}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.error || 'Search failed');
-      if (!data?.length) throw new Error(`No user found with username "${q}".`);
-      setResults(data);
-    } catch (err) {
-      setNotice({ type: 'error', message: err.message });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const addUser = async (userId, username) => {
-    setAdding(userId);
-    try {
-      const res = await fetch(`http://localhost:5001/api/groups/${groupId}/members`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ userId }),
-      });
-      if (!res.ok) throw new Error('Could not add member.');
-      setNotice({ type: 'success', message: `${username} added!` });
-      setResults(r => r.filter(u => u.id !== userId));
-      onAdded();
-    } catch (err) {
-      setNotice({ type: 'error', message: err.message });
-    } finally {
-      setAdding(null);
-    }
-  };
-
-  return (
-    <div style={ms.overlay} onClick={onClose}>
-      <div style={ms.sheet} onClick={e => e.stopPropagation()}>
-        <div style={ms.sheetHandle} />
-        <div style={ms.sheetHeader}>
-          <h3 style={ms.sheetTitle}>Add Member</h3>
-          <button style={ms.closeBtn} onClick={onClose}>✕</button>
-        </div>
-        <p style={ms.sheetSub}>Search by username to invite someone to this group.</p>
-        <form onSubmit={search} style={ms.searchRow}>
-          <input style={ms.searchInput} placeholder="Username…" value={query} onChange={e => { setQuery(e.target.value); setNotice(null); }} autoFocus />
-          <button type="submit" style={ms.searchBtn} disabled={loading}>{loading ? '…' : 'Search'}</button>
-        </form>
-        {notice && <p style={{ ...ms.feedback, color: notice.type === 'error' ? '#c62828' : 'var(--primary-color)' }}>{notice.message}</p>}
-        <ul style={ms.resultList}>
-          {results.map(u => (
-            <li key={u.id} style={ms.resultItem}>
-              <div style={ms.resultAvatar}>{(u.username || u.email || '?')[0].toUpperCase()}</div>
-              <span style={ms.resultName}>{u.username || u.email}</span>
-              <button style={ms.addBtn} onClick={() => addUser(u.id, u.username || u.email)} disabled={adding === u.id}>{adding === u.id ? '…' : 'Add'}</button>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
-};
 
 /* ─── Main Dashboard ────────────────────────────────────────────────────────── */
 const GroupDetails = () => {
@@ -143,6 +70,7 @@ const GroupDetails = () => {
 
   const nameById = (mid) => getDisplayName(members.find(x => x.id === mid) || { id: mid });
 
+
   const balanceDerived = useMemo(() => {
     const owed = {};
     activityEntries.forEach(exp => {
@@ -176,23 +104,8 @@ const GroupDetails = () => {
     return { owe: totalOwe.toFixed(2), owed: totalOwed.toFixed(2), oweRows, owedRows };
   }, [activityEntries, members, user?.uid]);
 
-  const handleAddExpense = async (e) => {
-    e.preventDefault();
-    const { amount, purpose, paidBy, splitBetween } = expenseForm;
-    if (!purpose || !Number(amount)) return setExpenseForm(p => ({ ...p, error: 'Check purpose and amount.' }));
-
-    try {
-      const res = await fetch(`http://localhost:5001/api/groups/${id}/expenses`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ amount: Number(amount), purpose, paidBy, splitBetween }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to save');
-      setActivityEntries(prev => [data, ...prev]);
-      setShowAddExpense(false);
-      setExpenseForm({ amount: '', purpose: '', paidBy: '', splitBetween: [], error: '' });
-    } catch (err) { setExpenseForm(p => ({ ...p, error: err.message })); }
+  const handleAddExpense = (data) => {
+    setActivityEntries(prev => [data, ...prev]);
   };
 
   const handleDeleteExpense = async (eid) => {
@@ -302,59 +215,18 @@ const GroupDetails = () => {
           <button style={{ ...ds.secondaryBtnRow, ...ds.secondaryBtnYellow }}>Settlements</button>
         </div>
       </section>
-
-      {showAddExpense && (
-        <div style={ds.expenseOverlay} onClick={() => setShowAddExpense(false)}>
-          <section style={ds.expenseModal} onClick={e => e.stopPropagation()}>
-            <div style={ds.expenseModalHeader}>
-              <h3 style={ds.sectionTitle}>Add Expense</h3>
-              <button style={ds.expenseCloseBtn} onClick={() => setShowAddExpense(false)}>✕</button>
-            </div>
-            <form onSubmit={handleAddExpense} style={ds.expenseForm}>
-              <div style={ds.expensePeopleRow}>
-                <div style={ds.expensePeopleCol}>
-                  <span style={ds.expenseFieldLabel}>Paid by</span>
-                  <div style={ds.memberChipRow}>
-                    {orderedMembers.map(m => (
-                      <button key={m.id} type="button" 
-                        style={{ ...ds.memberChip, ...(expenseForm.paidBy === m.id ? ds.memberChipActive : {}) }}
-                        onClick={() => setExpenseForm(p => ({ ...p, paidBy: m.id }))}
-                      >+ {getDisplayName(m)}</button>
-                    ))}
-                  </div>
-                </div>
-                <div style={ds.expensePeopleCol}>
-                  <span style={ds.expenseFieldLabel}>Split between</span>
-                  <div style={ds.memberChipRow}>
-                    {orderedMembers.map(m => {
-                      const active = expenseForm.splitBetween.includes(m.id);
-                      return (
-                        <button key={m.id} type="button" 
-                          style={{ ...ds.memberChip, ...(active ? ds.memberChipActive : {}) }}
-                          onClick={() => setExpenseForm(p => ({
-                            ...p,
-                            splitBetween: active ? (p.splitBetween.length > 1 ? p.splitBetween.filter(id => id !== m.id) : p.splitBetween) : [...p.splitBetween, m.id]
-                          }))}
-                        >{active ? '✓' : '+'} {getDisplayName(m)}</button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-              <p style={ds.expenseHint}>Who paid is the card or cash outlay. Split between is everyone who should owe a share.</p>
-              <div style={ds.expenseInlineRow}>
-                <input type="number" step="0.01" placeholder="Amount" value={expenseForm.amount} onChange={e => setExpenseForm(p => ({ ...p, amount: e.target.value }))} style={{ ...ds.expenseInput, ...ds.expenseInputAmount }} />
-                <input type="text" placeholder="Purpose" value={expenseForm.purpose} onChange={e => setExpenseForm(p => ({ ...p, purpose: e.target.value }))} style={{ ...ds.expenseInput, ...ds.expenseInputPurpose }} />
-              </div>
-              {expenseForm.error && <p style={ds.expenseError}>{expenseForm.error}</p>}
-              <div style={ds.expenseActions}>
-                <button type="button" style={ds.expenseCancelBtn} onClick={() => setShowAddExpense(false)}>Cancel</button>
-                <button type="submit" className="primary-btn">Save Expense</button>
-              </div>
-            </form>
-          </section>
-        </div>
-      )}
+       
+       {showAddExpense && (
+         <AddExpenseModal 
+           groupId={id} 
+           token={token} 
+           user={user} 
+           orderedMembers={orderedMembers} 
+           getDisplayName={getDisplayName} 
+           onClose={() => setShowAddExpense(false)} 
+           onSuccess={handleAddExpense} 
+         />
+       )}
 
       {showAddMember && <AddMemberModal groupId={id} token={token} onClose={() => setShowAddMember(false)} onAdded={fetchData} />}
     </div>
