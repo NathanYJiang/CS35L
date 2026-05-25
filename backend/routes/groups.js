@@ -96,6 +96,54 @@ router.post('/:id/expenses', authenticateToken, checkMembership, async (req, res
   res.status(201).json({ id: doc.id, ...expense });
 });
 
+// Get settlements (payments recorded between members)
+router.get('/:id/settlements', authenticateToken, checkMembership, async (req, res) => {
+  const snap = await db
+    .collection('groups')
+    .doc(req.params.id)
+    .collection('settlements')
+    .orderBy('createdAt', 'desc')
+    .get();
+  res.json(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+});
+
+// Record a settlement (from = payer, to = recipient)
+router.post('/:id/settlements', authenticateToken, checkMembership, async (req, res) => {
+  const { toUserId, amount } = req.body;
+  const fromUserId = req.user.uid;
+  const numericAmount = Number(amount);
+
+  if (!toUserId || typeof toUserId !== 'string') {
+    return res.status(400).json({ error: 'Recipient is required' });
+  }
+  if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+    return res.status(400).json({ error: 'Amount must be greater than 0' });
+  }
+  if (fromUserId === toUserId) {
+    return res.status(400).json({ error: 'Cannot settle with yourself' });
+  }
+  if (!req.groupData.members.includes(toUserId)) {
+    return res.status(400).json({ error: 'Recipient must be a group member' });
+  }
+
+  const settlement = {
+    fromUserId,
+    toUserId,
+    amount: Number(numericAmount.toFixed(2)),
+    createdBy: req.user.uid,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+
+  const docRef = await db.collection('groups').doc(req.params.id).collection('settlements').add(settlement);
+  res.status(201).json({
+    id: docRef.id,
+    fromUserId,
+    toUserId,
+    amount: settlement.amount,
+    createdBy: settlement.createdBy,
+  });
+});
+
 // Delete expense
 router.delete('/:id/expenses/:expenseId', authenticateToken, async (req, res) => {
   const expenseRef = db.collection('groups').doc(req.params.id).collection('expenses').doc(req.params.expenseId);

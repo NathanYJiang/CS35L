@@ -6,6 +6,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import AddMemberModal from '../components/AddMemberModal';
 import AddExpenseModal from '../components/AddExpenseModal';
 import { API } from '../config/api';
+import { buildOwedFromExpenses, applySettlements, netBalancesForUser } from '../utils/groupBalances';
 
 /* ─── Main Dashboard ────────────────────────────────────────────────────────── */
 const GroupDetails = () => {
@@ -16,6 +17,7 @@ const GroupDetails = () => {
   const [group, setGroup] = useState(null);
   const [members, setMembers] = useState([]);
   const [activityEntries, setActivityEntries] = useState([]);
+  const [settlements, setSettlements] = useState([]);
   const [showAddMember, setShowAddMember] = useState(false);
   const [showAddExpense, setShowAddExpense] = useState(false);
 
@@ -23,14 +25,19 @@ const GroupDetails = () => {
     if (!token) return;
     const headers = { Authorization: `Bearer ${token}` };
     try {
-      const [gRes, mRes, eRes] = await Promise.all([
-        fetch(API.group(id),    { headers }),
-        fetch(API.members(id),  { headers }),
+      const [gRes, mRes, eRes, sRes] = await Promise.all([
+        fetch(API.group(id), { headers }),
+        fetch(API.members(id), { headers }),
         fetch(API.expenses(id), { headers }),
+        fetch(API.settlements(id), { headers }),
       ]);
       if (gRes.ok) setGroup(await gRes.json());
       if (mRes.ok) setMembers(await mRes.json());
       if (eRes.ok) setActivityEntries(await eRes.json() || []);
+      if (sRes.ok) {
+        const list = await sRes.json();
+        setSettlements(Array.isArray(list) ? list : []);
+      }
     } catch (err) { console.error(err); }
   };
 
@@ -57,37 +64,17 @@ const GroupDetails = () => {
   const nameById = (mid) => getDisplayName(members.find(x => x.id === mid) || { id: mid });
 
   const balanceDerived = useMemo(() => {
-    const owed = {};
-    activityEntries.forEach(exp => {
-      const amt = Number(exp.amount);
-      const payer = exp.paidBy || exp.addedBy;
-      const split = exp.splitBetween?.length ? exp.splitBetween : members.map(m => m.id);
-      const share = amt / (split.length || 1);
-      split.forEach(debtor => { if (debtor !== payer) {
-        owed[debtor] = owed[debtor] || {};
-        owed[debtor][payer] = (owed[debtor][payer] || 0) + share;
-      }});
-    });
-
-    const oweRows = [], owedRows = [];
-    let totalOwe = 0, totalOwed = 0;
-
-    members.forEach(m => {
-      if (m.id === user?.uid) return;
-      const net = (owed[user?.uid]?.[m.id] || 0) - (owed[m.id]?.[user?.uid] || 0);
-      if (net > 0.009) {
-        const rounded = Math.round(net * 100) / 100;
-        oweRows.push({ id: m.id, amount: rounded });
-        totalOwe += rounded;
-      } else if (net < -0.009) {
-        const rounded = Math.round(Math.abs(net) * 100) / 100;
-        owedRows.push({ id: m.id, amount: rounded });
-        totalOwed += rounded;
-      }
-    });
-
-    return { owe: totalOwe.toFixed(2), owed: totalOwed.toFixed(2), oweRows, owedRows };
-  }, [activityEntries, members, user?.uid]);
+    const memberIds = members.map((m) => m.id);
+    const raw = buildOwedFromExpenses(activityEntries, memberIds);
+    const adjusted = applySettlements(raw, settlements);
+    const net = netBalancesForUser(adjusted, user?.uid, memberIds);
+    return {
+      owe: net.owe.toFixed(2),
+      owed: net.owed.toFixed(2),
+      oweRows: net.oweRows,
+      owedRows: net.owedRows,
+    };
+  }, [activityEntries, settlements, members, user?.uid]);
 
   // Called by AddExpenseModal on success — receives the saved expense object
   const handleAddExpense = (data) => {
@@ -196,8 +183,20 @@ const GroupDetails = () => {
           >
             View Group Expenses
           </button>
-          <button className={`${styles.secondaryBtnRow} ${styles.secondaryBtnGreen}`}>Personal Tracking</button>
-          <button className={`${styles.secondaryBtnRow} ${styles.secondaryBtnYellow}`}>Settlements</button>
+          <button
+            type="button"
+            className={`${styles.secondaryBtnRow} ${styles.secondaryBtnGreen}`}
+            onClick={() => navigate(`/groups/${id}/personal`)}
+          >
+            Personal Tracking
+          </button>
+          <button
+            type="button"
+            className={`${styles.secondaryBtnRow} ${styles.secondaryBtnYellow}`}
+            onClick={() => navigate(`/groups/${id}/settlements`)}
+          >
+            Settlements
+          </button>
         </div>
       </section>
 

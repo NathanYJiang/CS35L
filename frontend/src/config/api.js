@@ -17,5 +17,6 @@ export const API = {
   members:  (id)              => `${BASE_URL}/api/groups/${id}/members`,
   expenses: (id)              => `${BASE_URL}/api/groups/${id}/expenses`,
   expense:  (gid, eid)        => `${BASE_URL}/api/groups/${gid}/expenses/${eid}`,
+  settlements: (id)          => `${BASE_URL}/api/groups/${id}/settlements`,
   userSearch: (q)             => `${BASE_URL}/api/users/search?query=${encodeURIComponent(q)}`,
 };

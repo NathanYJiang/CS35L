@@ -9,6 +9,8 @@ import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import GroupDetails from './pages/GroupDetails';
 import GroupExpenses from './pages/GroupExpenses';
+import PersonalTracking from './pages/PersonalTracking';
+import Settlements from './pages/Settlements';
 import { AuthContext } from './context/AuthContext';
 import './index.css';
 
@@ -37,6 +39,8 @@ function App() {
             <Route path="/settings" element={isAuthenticated ? <Settings /> : <Navigate to="/login" />} />
             <Route path="/groups/:id" element={isAuthenticated ? <GroupDetails /> : <Navigate to="/login" />} />
             <Route path="/groups/:id/expenses" element={isAuthenticated ? <GroupExpenses /> : <Navigate to="/login" />} />
+            <Route path="/groups/:id/personal" element={isAuthenticated ? <PersonalTracking /> : <Navigate to="/login" />} />
+            <Route path="/groups/:id/settlements" element={isAuthenticated ? <Settlements /> : <Navigate to="/login" />} />
           </Routes>
         </main>
       </div>
