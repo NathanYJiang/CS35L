@@ -27,7 +27,7 @@ backend: install
 
 # Run all test suites
 test:
-	npm test --prefix frontend -- --watchAll=false
+	npm test --prefix frontend
 	npm test --prefix backend
 
 # Remove generated / installed artefacts (mirrors `make clean` for C builds)

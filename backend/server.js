@@ -4,11 +4,15 @@ const admin = require('firebase-admin');
 const morgan = require('morgan');
 const logger = require('./utils/logger');
 
-// Initialize Firebase Admin
-const serviceAccount = require('./serviceAccountKey.json');
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
+// Initialize Firebase Admin (skipped in Jest — mocked in __tests__/setup.js)
+if (!process.env.JEST_WORKER_ID) {
+  const serviceAccount = require('./serviceAccountKey.json');
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+  }
+}
 
 const groupRoutes = require('./routes/groups');
 const userRoutes = require('./routes/users');
