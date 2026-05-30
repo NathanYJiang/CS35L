@@ -3,8 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { API } from '../config/api';
 
-// API_BASE_URL now lives in src/config/api.js — import from there so the
-// host/port is defined in a single place across the whole frontend.
 const API_BASE_URL = API.groups;
 
 const MyGroups = () => {
@@ -12,22 +10,17 @@ const MyGroups = () => {
   const navigate = useNavigate();
 
   const [groups, setGroups] = useState([]);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [newGroupName, setNewGroupName] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // 2. Improved fetcher using useCallback and error handling
   const fetchGroups = useCallback(async () => {
     try {
       const res = await fetch(API_BASE_URL, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) {
-        const data = await res.json();
-        setGroups(data);
-      } else {
-        console.error('Failed to load groups:', res.statusText);
-      }
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      
+      const data = await res.json();
+      setGroups(data);
     } catch (error) {
       console.error('Network error while fetching groups:', error);
     }
@@ -37,11 +30,70 @@ const MyGroups = () => {
     fetchGroups(); 
   }, [fetchGroups]);
 
-  const handleAddGroup = async (e) => {
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  return (
+    <main className="page-container my-groups-page">
+      <header className="my-groups-header">
+        <h1 className="my-groups-title">My groups</h1>
+      </header>
+
+      <section className="my-groups-scroll-region" aria-label="Available groups">
+        <ul className="my-groups-blocks">
+          <li>
+            <button 
+              className="my-groups-block my-groups-block--add" 
+              onClick={() => setIsModalOpen(true)}
+              aria-haspopup="dialog"
+            >
+              + add group
+            </button>
+          </li>
+
+          {groups.map((group, index) => (
+            <li key={group.id}>
+              <Link 
+                to={`/groups/${group.id}`} 
+                className={`my-groups-block my-groups-block--group my-groups-block--tone-${index % 3}`}
+              >
+                {group.name}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <footer className="my-groups-footer">
+        <nav aria-label="Footer navigation">
+          <Link to="/profile">profile</Link> | <Link to="/settings">settings</Link> | 
+          <button className="my-groups-footer-logout" onClick={handleLogout}>logout</button>
+        </nav>
+      </footer>
+
+      <AddGroupModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onGroupAdded={fetchGroups}
+        token={token}
+      />
+    </main>
+  );
+};
+
+const AddGroupModal = ({ isOpen, onClose, onGroupAdded, token }) => {
+  const [newGroupName, setNewGroupName] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!newGroupName.trim()) return;
 
-    setLoading(true);
+    setIsLoading(true);
     try {
       const res = await fetch(API_BASE_URL, {
         method: 'POST',
@@ -54,78 +106,42 @@ const MyGroups = () => {
       
       if (res.ok) {
         setNewGroupName('');
-        setModalOpen(false);
-        fetchGroups(); 
+        onClose();
+        onGroupAdded(); 
       } else {
         console.error('Failed to create group');
       }
     } catch (error) {
       console.error('Error creating group:', error);
     } finally {
-      // Ensures loading state is cleared even if the request fails
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
-
   return (
-    <div className="page-container my-groups-page">
-      <header className="my-groups-header">
-        <h1 className="my-groups-title">My groups</h1>
-      </header>
-
-      <div className="my-groups-scroll-region">
-        <ul className="my-groups-blocks">
-          <li>
-            <button className="my-groups-block my-groups-block--add" onClick={() => setModalOpen(true)}>
-              + add group
-            </button>
-          </li>
-
-          {groups.map((group, i) => (
-            <li key={group.id}>
-              <Link to={`/groups/${group.id}`} className={`my-groups-block my-groups-block--group my-groups-block--tone-${i % 3}`}>
-                {group.name}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <footer className="my-groups-footer">
-        <Link to="/profile">profile</Link> | <Link to="/settings">settings</Link> | 
-        <button className="my-groups-footer-logout" onClick={handleLogout}>logout</button>
-      </footer>
-
-      {modalOpen && (
-        <div className="modal-backdrop" onClick={() => setModalOpen(false)}>
-          <div className="modal-dialog" onClick={e => e.stopPropagation()}>
-            <h2 className="modal-title">Add group</h2>
-            <form className="auth-form modal-form" onSubmit={handleAddGroup}>
-              <div className="form-group">
-                <label>Group name</label>
-                <input 
-                  autoFocus
-                  required
-                  value={newGroupName} 
-                  onChange={e => setNewGroupName(e.target.value)} 
-                  placeholder="e.g. Hawaii 2026" 
-                />
-              </div>
-              <div className="modal-actions">
-                <button type="button" onClick={() => setModalOpen(false)}>Cancel</button>
-                <button type="submit" disabled={loading}>
-                  {loading ? 'Creating...' : 'Create'}
-                </button>
-              </div>
-            </form>
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-dialog" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
+        <h2 className="modal-title">Add group</h2>
+        <form className="auth-form modal-form" onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label htmlFor="groupNameInput">Group name</label>
+            <input 
+              id="groupNameInput"
+              autoFocus
+              required
+              value={newGroupName} 
+              onChange={e => setNewGroupName(e.target.value)} 
+              placeholder="e.g. Hawaii 2026" 
+            />
           </div>
-        </div>
-      )}
+          <div className="modal-actions">
+            <button type="button" onClick={onClose}>Cancel</button>
+            <button type="submit" disabled={isLoading}>
+              {isLoading ? 'Creating...' : 'Create'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

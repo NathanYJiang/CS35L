@@ -8,7 +8,22 @@ import AddExpenseModal from '../components/AddExpenseModal';
 import { API } from '../config/api';
 import { buildOwedFromExpenses, applySettlements, netBalancesForUser } from '../utils/groupBalances';
 
-/* ─── Main Dashboard ────────────────────────────────────────────────────────── */
+// ─── HELPER UTILITIES ──────────────────
+const MEMBER_PALETTE = ['#007bff', '#42d6a3', '#ffc107'];
+
+const getDisplayName = (member, currentUserId) => {
+  if (!member) return 'Unknown user';
+  return member.id === currentUserId ? 'You' : (member.displayName || '').trim() || 'Unknown user';
+};
+
+const getColorForName = (name, orderedMemberNames) => {
+  const idx = orderedMemberNames.indexOf(name);
+  if (idx !== -1) return MEMBER_PALETTE[idx % MEMBER_PALETTE.length];
+  const hash = name.split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+  return MEMBER_PALETTE[hash % MEMBER_PALETTE.length];
+};
+
+/* ─── MAIN DASHBOARD COMPONENT ────────────────────────────────────────── */
 const GroupDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -38,30 +53,25 @@ const GroupDetails = () => {
         const list = await sRes.json();
         setSettlements(Array.isArray(list) ? list : []);
       }
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+      console.error('Failed to aggregate dashboard data:', err); 
+    }
   };
 
-  useEffect(() => { fetchData(); }, [id, token]);
+  useEffect(() => { 
+    fetchData(); 
+  }, [id, token]);
 
+  // UI Processing Memoizations
   const orderedMembers = useMemo(() =>
     [...members].sort((a, b) => (a.id === user?.uid ? -1 : b.id === user?.uid ? 1 : 0)),
   [members, user?.uid]);
 
-  const getDisplayName = (m) => {
-    if (!m) return 'Unknown user';
-    return m.id === user?.uid ? 'You' : (m.displayName || '').trim() || 'Unknown user';
-  };
+  const orderedMemberNames = useMemo(() => 
+    orderedMembers.map(m => getDisplayName(m, user?.uid)), 
+  [orderedMembers, user?.uid]);
 
-  const memberPalette = ['#007bff', '#42d6a3', '#ffc107'];
-  const colorForName = (name) => {
-    const memberNames = orderedMembers.map(m => getDisplayName(m));
-    const idx = memberNames.indexOf(name);
-    if (idx !== -1) return memberPalette[idx % memberPalette.length];
-    const hash = name.split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
-    return memberPalette[hash % memberPalette.length];
-  };
-
-  const nameById = (mid) => getDisplayName(members.find(x => x.id === mid) || { id: mid });
+  const nameById = (mid) => getDisplayName(members.find(x => x.id === mid) || { id: mid }, user?.uid);
 
   const balanceDerived = useMemo(() => {
     const memberIds = members.map((m) => m.id);
@@ -76,13 +86,12 @@ const GroupDetails = () => {
     };
   }, [activityEntries, settlements, members, user?.uid]);
 
-  // Called by AddExpenseModal on success — receives the saved expense object
   const handleAddExpense = (data) => {
     setActivityEntries(prev => [data, ...prev]);
   };
 
   const handleDeleteExpense = async (eid) => {
-    if (!window.confirm('Are you sure?')) return;
+    if (!window.confirm('Are you sure you want to delete this expense?')) return;
     const res = await fetch(API.expense(id, eid), {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
@@ -93,112 +102,61 @@ const GroupDetails = () => {
   if (!group) return <LoadingSpinner message="Loading trip…" />;
 
   return (
-    <div className={`page-container ${styles.page}`}>
-      <div className={styles.header}>
+    <main className={`page-container ${styles.page}`}>
+      <header className={styles.header}>
         <button className={styles.backBtn} onClick={() => navigate('/')}>← Back to my groups</button>
         <h1 className={styles.tripName}>{group.name}</h1>
-      </div>
+      </header>
       <hr className={styles.rule} />
 
-      <div className={styles.membersLine}>
-        <h3 className={styles.membersLabel}>Members:</h3>
-        <span className={styles.membersText}>
+      <section className={styles.membersLine} aria-label="Group Members">
+        <h2 className={styles.membersLabel}>Members:</h2>
+        <div className={styles.membersText}>
           {orderedMembers.map((m, idx) => {
-            const name = getDisplayName(m);
+            const name = getDisplayName(m, user?.uid);
             return (
               <span key={m.id}>
-                <span className={styles.memberName} style={{ color: colorForName(name) }}>{name}</span>
+                <span className={styles.memberName} style={{ color: getColorForName(name, orderedMemberNames) }}>
+                  {name}
+                </span>
                 {idx < orderedMembers.length - 1 && <span className={styles.memberDivider}> | </span>}
               </span>
             );
           })}
-        </span>
-        <button className={styles.addMemberBtn} onClick={() => setShowAddMember(true)}>+ Add member</button>
-      </div>
-
-      <section className={styles.card}>
-        <h3 className={styles.sectionTitle}>Balances</h3>
-        <p className={styles.balanceIntro}>Each column: your total on top, per-person amounts below.</p>
-        <div className={styles.balanceColumns}>
-          {[
-            { label: 'You owe', key: 'owe', customClass: styles.balancePanelOwe },
-            { label: 'You are owed', key: 'owed', customClass: styles.balancePanelOwed }
-          ].map(col => (
-            <div key={col.key} className={`${styles.balancePanel} ${col.customClass}`}>
-              <div className={styles.balancePanelLabel}>{col.label}</div>
-              <p className={styles.balancePanelTotal}>${balanceDerived[col.key]}</p>
-              <div className={styles.balancePanelRule} />
-              <div className={styles.balancePanelSub}>Per person</div>
-              {balanceDerived[`${col.key}Rows`].length === 0 ? (
-                <p className={styles.balanceBreakdownEmpty}>No one right now</p>
-              ) : (
-                <ul className={styles.balanceBreakdownList}>
-                  {balanceDerived[`${col.key}Rows`].map(row => (
-                    <li key={row.id} className={styles.balanceBreakdownItem}>
-                      <span className={styles.balanceBreakdownName} style={{ color: colorForName(nameById(row.id)) }}>
-                        {nameById(row.id)}
-                      </span>
-                      <span className={styles.balanceBreakdownAmount}>${row.amount}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ))}
         </div>
+        <button className={styles.addMemberBtn} onClick={() => setShowAddMember(true)}>+ Add member</button>
       </section>
 
-      {activityEntries.length > 0 && (
-        <>
-          <hr className={styles.rule} />
-          <section className={styles.activitySection}>
-            <h3 className={styles.activityTitle}>Recent Activity</h3>
-            <div className={styles.activityList}>
-              {activityEntries.slice(0, 5).map(a => {
-                const name = nameById(a.paidBy || a.addedBy);
-                return (
-                  <div key={a.id} className={styles.activityRowContainer}>
-                    <p className={styles.activityRow}>
-                      <span className={styles.activityUser} style={{ color: colorForName(name) }}>{name}</span>
-                      <span className={styles.activityMeta}> paid for {a.purpose} </span>
-                      <span className={styles.activityAmount}>${a.amount}</span>
-                    </p>
-                    {a.addedBy === user?.uid && <button onClick={() => handleDeleteExpense(a.id)} className={styles.deleteBtn}>✕</button>}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        </>
-      )}
+      <BalanceColumns 
+        balanceDerived={balanceDerived} 
+        nameById={nameById} 
+        orderedMemberNames={orderedMemberNames} 
+      />
+
+      <ActivityList 
+        activityEntries={activityEntries} 
+        nameById={nameById} 
+        orderedMemberNames={orderedMemberNames} 
+        currentUserId={user?.uid}
+        onDeleteExpense={handleDeleteExpense}
+      />
 
       <hr className={styles.rule} />
-      <section className={styles.actions}>
+      
+      <nav className={styles.actions} aria-label="Dashboard views">
         <button className={styles.addExpenseBtn} onClick={() => setShowAddExpense(true)}>+ Add expense</button>
         <div className={styles.secondaryRow}>
-          <button
-            type="button"
-            className={`${styles.secondaryBtnRow} ${styles.secondaryBtnBlue}`}
-            onClick={() => navigate(`/groups/${id}/expenses`)}
-          >
+          <button type="button" className={`${styles.secondaryBtnRow} ${styles.secondaryBtnBlue}`} onClick={() => navigate(`/groups/${id}/expenses`)}>
             View Group Expenses
           </button>
-          <button
-            type="button"
-            className={`${styles.secondaryBtnRow} ${styles.secondaryBtnGreen}`}
-            onClick={() => navigate(`/groups/${id}/personal`)}
-          >
+          <button type="button" className={`${styles.secondaryBtnRow} ${styles.secondaryBtnGreen}`} onClick={() => navigate(`/groups/${id}/personal`)}>
             Personal Tracking
           </button>
-          <button
-            type="button"
-            className={`${styles.secondaryBtnRow} ${styles.secondaryBtnYellow}`}
-            onClick={() => navigate(`/groups/${id}/settlements`)}
-          >
+          <button type="button" className={`${styles.secondaryBtnRow} ${styles.secondaryBtnYellow}`} onClick={() => navigate(`/groups/${id}/settlements`)}>
             Settlements
           </button>
         </div>
-      </section>
+      </nav>
 
       {showAddExpense && (
         <AddExpenseModal
@@ -206,14 +164,92 @@ const GroupDetails = () => {
           token={token}
           user={user}
           orderedMembers={orderedMembers}
-          getDisplayName={getDisplayName}
+          getDisplayName={(m) => getDisplayName(m, user?.uid)}
           onClose={() => setShowAddExpense(false)}
           onSuccess={handleAddExpense}
         />
       )}
-
       {showAddMember && <AddMemberModal groupId={id} token={token} onClose={() => setShowAddMember(false)} onAdded={fetchData} />}
-    </div>
+    </main>
+  );
+};
+
+/* ─── SUB-COMPONENT: BALANCES ────────────────────────────────────────── */
+const BalanceColumns = ({ balanceDerived, nameById, orderedMemberNames }) => {
+  const columnConfigs = [
+    { label: 'You owe', key: 'owe', customClass: styles.balancePanelOwe },
+    { label: 'You are owed', key: 'owed', customClass: styles.balancePanelOwed }
+  ];
+
+  return (
+    <section className={styles.card} aria-labelledby="balance-title">
+      <h3 id="balance-title" className={styles.sectionTitle}>Balances</h3>
+      <p className={styles.balanceIntro}>Each column: your total on top, per-person amounts below.</p>
+      
+      <div className={styles.balanceColumns}>
+        {columnConfigs.map(col => (
+          <div key={col.key} className={`${styles.balancePanel} ${col.customClass}`}>
+            <div className={styles.balancePanelLabel}>{col.label}</div>
+            <p className={styles.balancePanelTotal}>${balanceDerived[col.key]}</p>
+            <div className={styles.balancePanelRule} />
+            <div className={styles.balancePanelSub}>Per person</div>
+            
+            {balanceDerived[`${col.key}Rows`].length === 0 ? (
+              <p className={styles.balanceBreakdownEmpty}>No one right now</p>
+            ) : (
+              <ul className={styles.balanceBreakdownList}>
+                {balanceDerived[`${col.key}Rows`].map(row => {
+                  const name = nameById(row.id);
+                  return (
+                    <li key={row.id} className={styles.balanceBreakdownItem}>
+                      <span className={styles.balanceBreakdownName} style={{ color: getColorForName(name, orderedMemberNames) }}>
+                        {name}
+                      </span>
+                      <span className={styles.balanceBreakdownAmount}>${row.amount}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+};
+
+/* ─── SUB-COMPONENT: ACTIVITY LIST ───────────────────────────────────── */
+const ActivityList = ({ activityEntries, nameById, orderedMemberNames, currentUserId, onDeleteExpense }) => {
+  if (activityEntries.length === 0) return null;
+
+  return (
+    <>
+      <hr className={styles.rule} />
+      <section className={styles.activitySection} aria-labelledby="activity-title">
+        <h3 id="activity-title" className={styles.activityTitle}>Recent Activity</h3>
+        <ul className={styles.activityList}>
+          {activityEntries.slice(0, 5).map(entry => {
+            const name = nameById(entry.paidBy || entry.addedBy);
+            return (
+              <li key={entry.id} className={styles.activityRowContainer}>
+                <p className={styles.activityRow}>
+                  <span className={styles.activityUser} style={{ color: getColorForName(name, orderedMemberNames) }}>
+                    {name}
+                  </span>
+                  <span className={styles.activityMeta}> paid for {entry.purpose} </span>
+                  <span className={styles.activityAmount}>${entry.amount}</span>
+                </p>
+                {entry.addedBy === currentUserId && (
+                  <button onClick={() => onDeleteExpense(entry.id)} className={styles.deleteBtn} aria-label={`Delete expense for ${entry.purpose}`}>
+                    ✕
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    </>
   );
 };
 
