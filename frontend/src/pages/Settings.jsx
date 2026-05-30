@@ -106,12 +106,25 @@ const s = {
   },
 };
 
+/* ── presentational toggle ──────────────────────────────────────── */
+// Defined at module scope so it keeps a stable identity across renders
+// (a component re-created inside Settings would remount on every render).
+const Toggle = ({ on, onToggle }) => (
+  <button
+    type="button"
+    style={{ ...s.toggle, background: on ? 'var(--primary-color)' : '#cdd4e0' }}
+    onClick={onToggle}
+    aria-pressed={on}
+  >
+    <span style={{ ...s.toggleDot, left: on ? 23 : 3 }} />
+  </button>
+);
+
 /* ── component ──────────────────────────────────────────────────── */
 const Settings = () => {
   const { token } = useContext(AuthContext);
 
   const [settings, setSettings] = useState(defaultSettings);
-  const [saving, setSaving] = useState(false);
   const [flash, setFlash] = useState('');
 
   // Load settings from backend
@@ -139,7 +152,6 @@ const Settings = () => {
 
   const persist = async (next) => {
     setSettings(next);
-    setSaving(true);
     try {
       await fetch(`${API_BASE}/profile`, {
         method: 'POST',
@@ -149,7 +161,6 @@ const Settings = () => {
       setFlash('Saved');
       setTimeout(() => setFlash(''), 1500);
     } catch { /* silent */ }
-    setSaving(false);
   };
 
   const toggleNotif = (key) => {
@@ -163,17 +174,6 @@ const Settings = () => {
   const setCurrency = (code) => {
     persist({ ...settings, currency: code });
   };
-
-  const Toggle = ({ on, onToggle }) => (
-    <button
-      type="button"
-      style={{ ...s.toggle, background: on ? 'var(--primary-color)' : '#cdd4e0' }}
-      onClick={onToggle}
-      aria-pressed={on}
-    >
-      <span style={{ ...s.toggleDot, left: on ? 23 : 3 }} />
-    </button>
-  );
 
   return (
     <div className="page-container" style={s.page}>

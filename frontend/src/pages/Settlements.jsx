@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext, useMemo } from 'react';
+import { useState, useEffect, useContext, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import styles from './GroupDetails.module.css';
@@ -27,7 +27,7 @@ const Settlements = () => {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError('');
@@ -55,11 +55,12 @@ const Settlements = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, token]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
-  }, [id, token]);
+  }, [load]);
 
   const orderedMembers = useMemo(
     () => [...members].sort((a, b) => (a.id === user?.uid ? -1 : b.id === user?.uid ? 1 : 0)),
@@ -82,19 +83,21 @@ const Settlements = () => {
     return memberPalette[hash % memberPalette.length];
   };
 
-  const memberIds = members.map((m) => m.id);
+  // Memoized so it keeps a stable identity and can be a clean dependency of
+  // the balance calculations below (a fresh .map() each render would not).
+  const memberIds = useMemo(() => members.map((m) => m.id), [members]);
 
   const balanceAfterSettlements = useMemo(() => {
     const raw = buildOwedFromExpenses(expenses, memberIds);
     const adjusted = applySettlements(raw, settlements);
     return netBalancesForUser(adjusted, user?.uid, memberIds);
-  }, [expenses, settlements, members, user?.uid]);
+  }, [expenses, settlements, memberIds, user?.uid]);
 
   const groupSuggested = useMemo(() => {
     const raw = buildOwedFromExpenses(expenses, memberIds);
     const adjusted = applySettlements(raw, settlements);
     return suggestedSettlements(adjusted, memberIds);
-  }, [expenses, settlements, members]);
+  }, [expenses, settlements, memberIds]);
 
   const oweTargets = balanceAfterSettlements.oweRows;
 

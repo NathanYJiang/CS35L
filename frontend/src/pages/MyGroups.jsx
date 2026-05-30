@@ -26,8 +26,13 @@ const MyGroups = () => {
     }
   }, [token]);
 
-  useEffect(() => { 
-    fetchGroups(); 
+  // Fetch-on-mount/token-change: an effect is the correct place to sync with
+  // the server (an external system). The setState happens after the await, not
+  // synchronously, so the cascading-render concern the rule guards against
+  // doesn't apply here.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchGroups();
   }, [fetchGroups]);
 
   const handleLogout = () => {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext, useMemo } from 'react';
+import { useState, useEffect, useContext, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import styles from './GroupDetails.module.css';
@@ -36,7 +36,7 @@ const GroupDetails = () => {
   const [showAddMember, setShowAddMember] = useState(false);
   const [showAddExpense, setShowAddExpense] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!token) return;
     const headers = { Authorization: `Bearer ${token}` };
     try {
@@ -53,14 +53,15 @@ const GroupDetails = () => {
         const list = await sRes.json();
         setSettlements(Array.isArray(list) ? list : []);
       }
-    } catch (err) { 
-      console.error('Failed to aggregate dashboard data:', err); 
+    } catch (err) {
+      console.error('Failed to aggregate dashboard data:', err);
     }
-  };
-
-  useEffect(() => { 
-    fetchData(); 
   }, [id, token]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchData();
+  }, [fetchData]);
 
   // UI Processing Memoizations
   const orderedMembers = useMemo(() =>
