@@ -6,7 +6,6 @@ import MyGroups from './pages/MyGroups';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Profile from './pages/Profile';
-import Settings from './pages/Settings';
 import GroupDetails from './pages/GroupDetails';
 import GroupExpenses from './pages/GroupExpenses';
 import PersonalTracking from './pages/PersonalTracking';
@@ -36,7 +35,6 @@ function App() {
             <Route path="/" element={isAuthenticated ? <MyGroups /> : <Navigate to="/login" replace />} />
             <Route path="/dashboard" element={<Navigate to="/" replace />} />
             <Route path="/profile" element={isAuthenticated ? <Profile /> : <Navigate to="/login" />} />
-            <Route path="/settings" element={isAuthenticated ? <Settings /> : <Navigate to="/login" />} />
             <Route path="/groups/:id" element={isAuthenticated ? <GroupDetails /> : <Navigate to="/login" />} />
             <Route path="/groups/:id/expenses" element={isAuthenticated ? <GroupExpenses /> : <Navigate to="/login" />} />
             <Route path="/groups/:id/personal" element={isAuthenticated ? <PersonalTracking /> : <Navigate to="/login" />} />

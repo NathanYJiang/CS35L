@@ -73,7 +73,7 @@ const MyGroups = () => {
 
       <footer className="my-groups-footer">
         <nav aria-label="Footer navigation">
-          <Link to="/profile">profile</Link> | <Link to="/settings">settings</Link> | 
+          <Link to="/profile">profile</Link> | 
           <button className="my-groups-footer-logout" onClick={handleLogout}>logout</button>
         </nav>
       </footer>

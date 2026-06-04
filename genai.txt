@@ -1,0 +1,282 @@
+Endetted (CS35L) — Generative AI Use Log
+=========================================
+
+Tool: Cursor (beyond course-provided tutors).
+Syllabus rule: AI-generated code is not "my work"; my prompts, edits, and reflections are.
+Each entry below uses the same structure: My Prompt → LLM Output → Intentional Reflection.
+
+
+══════════════════════════════════════════════════════════════════════════════
+1. Automated E2E tests (backend + frontend)
+   Commit: abaaf12
+══════════════════════════════════════════════════════════════════════════════
+
+// [GenAI Use] My Prompt:
+//
+// Do the following so that our project satisfies the rubric requirement for
+// "2+ fully automated end-to-end tests" and graders can run one command to verify:
+//
+// 1. Add backend E2E tests using Supertest against our real Express app (not unit
+//    tests in isolation) so that HTTP → middleware → route handler → mock DB is
+//    exercised the way lecture describes client–server integration testing.
+// 2. Mock firebase-admin (Firestore + verifyIdToken) so that tests run without
+//    backend/serviceAccountKey.json — otherwise CI and teammates without keys fail.
+// 3. Cover at least: (a) create group → POST expense → GET list → DELETE expense,
+//    (b) POST settlement with validation, (c) 401 when Authorization is missing.
+// 4. Add frontend E2E-style tests for groupBalances.js so that expense split +
+//    settlement math is verified independently of the UI (our balances are
+//    client-computed, so this is the critical path).
+// 5. Wire npm test at repo root and fix Makefile so make test runs both suites once.
+//
+// Change or create these files specifically:
+//   - backend/__tests__/mocks/firestore.js       (in-memory groups/expenses/settlements)
+//   - backend/__tests__/mocks/firebaseAdmin.js   (token → uid mapping for alice/bob)
+//   - backend/__tests__/setup.js                 (jest.mock before routes load)
+//   - backend/__tests__/e2e.groups.test.js       (Supertest flows above)
+//   - backend/jest.config.js
+//   - backend/server.js                          (skip Firebase init when JEST_WORKER_ID set)
+//   - frontend/src/utils/groupBalances.e2e.test.js
+//   - frontend/vitest.config.js
+//   - frontend/src/App.test.jsx                  (fix Vitest imports if broken)
+//   - package.json (root), frontend/package.json, Makefile
+//
+
+// [GenAI Use] LLM Response Start
+
+describe('E2E: group expense lifecycle', () => {
+  it('creates a group, adds an expense, lists it, and deletes it', async () => {
+    const createRes = await request(app)
+      .post('/api/groups').set(alice).send({ name: 'Weekend trip' });
+    // POST /api/groups/:id/expenses → GET list → DELETE → GET empty
+  });
+});
+
+// In-memory mock stores: collections.groups[id].expenses, .settlements
+// server.js: if (!process.env.JEST_WORKER_ID) { initializeApp(...) }
+
+// [GenAI Use] LLM Response End
+
+// [GenAI Use] Intentional Reflection:
+//
+// Why Supertest + mock instead of Playwright: our app’s “E2E” for grading is
+// proving the API contract and auth middleware chain work; browser tests would
+// also need Firebase Auth in headless Chrome. The mock is a deliberate tradeoff —
+// it tests Express logic, not real Firestore indexing or security rules.
+//
+// I rejected the first draft because tests did not pass:
+//   - Jest hoisting: jest.mock() factory cannot close over imports from setup;
+//     I required ./mocks inside the factory (lecture: understand tool constraints).
+//   - App.test.jsx: Vitest needs explicit `import { describe, it } from 'vitest'`;
+//     I chose that over globals: true to keep test scope explicit.
+//   - Makefile had Jest’s --watchAll=false on Vitest; wrong runner flag.
+//
+// I manually confirmed npm test → 8 passing. I can explain each test’s purpose in
+// review: e.g. settlement test proves checkMembership + body validation on
+// backend/routes/groups.js lines 111–127, not just happy-path UI.
+
+
+══════════════════════════════════════════════════════════════════════════════
+2. Personal tracking & settlements
+   Commit: 396ab6a
+══════════════════════════════════════════════════════════════════════════════
+
+// [GenAI Use] My Prompt:
+//
+// Implement Personal Tracking and Settlements so that GroupDetails’ three action
+// buttons are real features (not placeholders) and balances reflect recorded payments:
+//
+// 1. Personal Tracking: new page at /groups/:id/personal that lists only expenses
+//    where paidBy (or addedBy fallback) equals the logged-in user — so members see
+//    what they personally fronted, separate from who owes whom net.
+// 2. Settlements: new page at /groups/:id/settlements plus backend
+//    GET/POST /api/groups/:id/settlements so users record "A paid B $X"; fold
+//    settlements into balance math via applySettlements() before netBalancesForUser().
+// 3. Wire navigation from GroupDetails buttons; reuse API helpers, not raw localhost URLs.
+// 4. Server validation: reject amount <= 0, self-settlement, recipient not in members[].
+//
+// Change these files:
+//   - backend/routes/groups.js              (settlements subcollection routes)
+//   - frontend/src/utils/groupBalances.js   (applySettlements, netBalancesForUser)
+//   - frontend/src/pages/PersonalTracking.jsx   (new)
+//   - frontend/src/pages/Settlements.jsx        (new)
+//   - frontend/src/pages/GroupDetails.jsx       (navigate + use updated balances)
+//   - frontend/src/pages/GroupDetails.module.css
+//   - frontend/src/pages/GroupExpenses.jsx      (ensure API import consistent)
+//   - frontend/src/App.jsx                    (routes for /personal, /settlements)
+//   - frontend/src/config/api.js              (API.settlements helper)
+
+// [GenAI Use] LLM Response Start
+
+// POST /:id/settlements — fromUserId = req.user.uid, validates toUserId in members
+// applySettlements(owed, settlements) reduces owed[debtor][creditor] by payment amount
+// PersonalTracking filters: expenses.filter(e => (e.paidBy || e.addedBy) === uid)
+
+// [GenAI Use] LLM Response End
+
+// [GenAI Use] Intentional Reflection:
+//
+// I separated concerns on purpose: settlements are stored facts (who paid whom);
+// balances remain derived data in groupBalances.js — same pattern as expenses.
+// That matches our existing architecture (README flaw: no server-side net balance).
+//
+// Before accepting, I traced one scenario by hand: $100 expense, alice paid, split
+// [alice, bob] → bob owes $50; settlement bob→alice $50 → net 0. Later I added
+// groupBalances.e2e.test.js to lock this in.
+//
+// I kept checkMembership on settlement routes because lecture emphasized authorization
+// at the API boundary. I noticed DELETE expense still lacks checkMembership — I
+// logged that in NEXT-STEPS.md for a follow-up fix + test, not blind acceptance.
+//
+// I smoke-tested with npm run dev: create expense, open Settlements, record payment,
+// confirm GroupDetails "You owe" column updates.
+
+
+══════════════════════════════════════════════════════════════════════════════
+3. Rubric gap checklist (NEXT-STEPS.md)
+   Commit: 5acaa65
+══════════════════════════════════════════════════════════════════════════════
+
+// [GenAI Use] My Prompt:
+//
+// Create NEXT-STEPS.md at repo root so that our team has a single checklist of
+// remaining rubric items (not yet done) vs what we already finished — I need this
+// for project planning and to show I know what is still "my work" vs done.
+//
+// Include specifically:
+//   - Replace root README.md with full project doc + 2 Mermaid diagrams + team section
+//   - checkMembership on DELETE expense + E2E test expecting 403 for non-member
+//   - Security documentation (Firestore rules OR API-only model)
+//   - .env.example for VITE_API_URL
+//   - Testing section referencing npm test
+//   - Note that E2E tests and make test are already done (commit abaaf12)
+//
+// Change: NEXT-STEPS.md only. Commit message: "added readme for next steps".
+
+// [GenAI Use] LLM Response Start
+
+# Next steps
+1. Replace root README.md with a real project README ...
+3. Add checkMembership on expense delete (+ E2E test for 403) ...
+...
+
+// [GenAI Use] LLM Response End
+
+// [GenAI Use] Intentional Reflection:
+//
+// This is meta-work, not feature code — I used AI to format a gap analysis I already
+// understood from comparing our repo to the rubric. I edited the list to name exact
+// files and env vars (VITE_API_URL in frontend/src/config/api.js) so the doc is
+// actionable, not vague "improve README."
+//
+// I intentionally did NOT ask AI to implement these items in the same prompt: that
+// would be vibe-coding the rubric. Each remaining item gets its own prompt +
+// reflection when I tackle it. The DELETE + checkMembership item connects directly
+// to lecture on defense in depth — same middleware on all mutating group routes.
+
+
+══════════════════════════════════════════════════════════════════════════════
+4. API interface specification (homework draft, not in repo)
+══════════════════════════════════════════════════════════════════════════════
+
+// [GenAI Use] My Prompt:
+//
+// Write a first-draft interface specification for ONE client–server API we actually
+// use so that I can submit homework on syntax (types/parameters) and semantics
+// (meaning, success, errors) — pick POST /api/groups/:id/expenses because it has
+// auth, path param, JSON body, validation, and multiple error codes.
+//
+// Base the spec on our real code in:
+//   - backend/routes/groups.js (POST handler + checkMembership middleware)
+//   - backend/middleware/auth.js (Bearer token → req.user.uid)
+//   - frontend/src/components/AddExpenseModal.jsx (request body shape)
+//
+// Include: required headers, path/body fields with types, 201 response shape,
+// all HTTP errors we return today, and honest gaps (e.g. splitBetween not validated
+// against group members). Output as plain text for me to paste — do not commit a file.
+
+// [GenAI Use] LLM Response Start
+
+// POST /api/groups/{groupId}/expenses
+// Authorization: Bearer <firebase_id_token>
+// Body: { amount: number, purpose: string, paidBy?: string, splitBetween: string[] }
+// 201 | 400 | 401 | 403 | 404 — with { error: string } bodies
+
+// [GenAI Use] LLM Response End
+
+// [GenAI Use] Intentional Reflection:
+//
+// I used the spec as a reading-comprehension check: I opened groups.js line-by-line
+// and confirmed every status code in the draft matches our implementation. I added
+// mental note of what we do NOT validate (paidBy ∈ members) — that is a real flaw
+// I would fix before calling the API "production-ready."
+//
+// I asked for text-only output because this is for a written submission, not repo
+// clutter. If we add OpenAPI later, this draft becomes the source of truth for
+// contract tests — connecting to lecture on explicit interfaces vs implicit fetch calls.
+
+
+══════════════════════════════════════════════════════════════════════════════
+5. Group dashboard UI & expense modal (Week 6)
+   Commits: c6a4854, b1b816c, 9681cff, related
+══════════════════════════════════════════════════════════════════════════════
+
+// [GenAI Use] My Prompt:
+//
+// Refactor GroupDetails and related UI so that the group dashboard matches our
+// wireframe and supports the expense model we store in Firestore (paidBy,
+// splitBetween, equal splits):
+//
+// 1. Members row: horizontal list with | separators, "+ Add member" opens search modal.
+// 2. Balances: two columns (You owe / You are owed) with per-person breakdown from
+//    groupBalances.js — not hardcoded numbers.
+// 3. Recent activity: max 5 items, colored payer name, "paid for {purpose}", bold amount.
+// 4. Add Expense modal: chip UI for paidBy (single) and splitBetween (multi, ≥1);
+//    amount + purpose on one row; POST to API.expenses(groupId).
+// 5. Three action buttons in one row (blue / green / yellow) → routes for expenses,
+//    personal, settlements once those pages exist.
+// 6. Fix ESLint: remove unused React imports; useEffect cleanup with ignore flag.
+//
+// Change primarily:
+//   - frontend/src/pages/GroupDetails.jsx
+//   - frontend/src/pages/GroupDetails.module.css
+//   - frontend/src/components/AddExpenseModal.jsx   (extract from GroupDetails)
+//   - frontend/src/components/AddMemberModal.jsx
+//   - frontend/src/index.css                        (my-groups block palette)
+//   - frontend/src/pages/MyGroups.jsx
+//   - frontend/src/pages/GroupExpenses.jsx          (full list at /groups/:id/expenses)
+
+// [GenAI Use] LLM Response Start
+
+// Chip toggles for paidBy / splitBetween; buildOwedFromExpenses in GroupDetails
+// slice(0, 5) on activity; navigate(`/groups/${id}/expenses`) on button click
+// CSS module classes: styles.balanceCol, styles.memberChip, etc.
+
+// [GenAI Use] LLM Response End
+
+// [GenAI Use] Intentional Reflection:
+//
+// I used AI for layout/CSS velocity but owned the domain rules: equal split is
+// amount / |splitBetween|, and only non-payers owe the payer — I verified in
+// groupBalances.js because the UI is worthless if the math is wrong.
+//
+// I changed AI-suggested colors to our team palette (#007BFF, #42d6a3, #FFC107)
+// after teammate refactor to CSS modules — I did not revert their structure just
+// because the model preferred inline styles.
+//
+// Extracting AddExpenseModal and AddMemberModal (commit b1b816c) was my decision
+// after the file grew too large; AI generated the split but I chose the component
+// boundaries to match lecture guidance on separation of concerns.
+//
+// Limiting activity to 5 is a product choice documented in UI; full history lives
+// on GroupExpenses.jsx — I wanted dashboard skimmability without losing data access.
+
+
+══════════════════════════════════════════════════════════════════════════════
+Ongoing practice (course alignment)
+══════════════════════════════════════════════════════════════════════════════
+
+- Every new GenAI session: "Do X so that Y. Change files: …" + run tests + reflection.
+- Inline // [GenAI Use] in source when a whole file is mostly AI-first draft.
+- AI raises ceiling (tests, docs, layout); I retain ownership of auth rules, split
+  math, rubric tradeoffs, and verification.
+- Remaining items: see NEXT-STEPS.md — each will get a new entry here before commit.

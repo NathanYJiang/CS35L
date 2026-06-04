@@ -17,16 +17,10 @@ router.get('/me', authenticateToken, catchAsync(async (req, res) => {
   res.json(doc.exists ? { id: doc.id, ...doc.data() } : { id: req.user.uid, username: '' });
 }));
 
-// Create or Update Profile (also accepts settings from Settings page)
+// Create or Update Profile
 router.post('/profile', authenticateToken, catchAsync(async (req, res) => {
-  const { username, phone, settings } = req.body;
+  const { username, phone } = req.body;
   const uid = req.user.uid;
-
-  // If only settings are being updated (from Settings page), skip username validation
-  if (settings && !username) {
-    await db.doc(uid).set({ settings, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
-    return res.json({ settings });
-  }
 
   if (!username?.trim()) return res.status(400).send('Username required');
 
@@ -43,8 +37,6 @@ router.post('/profile', authenticateToken, catchAsync(async (req, res) => {
     phone: phone || '',
     updatedAt: admin.firestore.FieldValue.serverTimestamp()
   };
-
-  if (settings) userData.settings = settings;
 
   await db.doc(uid).set(userData, { merge: true });
   res.json(userData);
