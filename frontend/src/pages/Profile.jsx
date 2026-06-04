@@ -211,10 +211,6 @@ const Profile = () => {
       <div className="profile-actions">
         <h3>Security</h3>
         <div className="action-item">
-          <span>Two-Factor Authentication</span>
-          <button className="secondary-btn">Enable 2FA (Firebase Auth)</button>
-        </div>
-        <div className="action-item mt-10">
           <span>Username</span>
           <button
             type="button"
