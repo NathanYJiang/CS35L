@@ -272,6 +272,104 @@ describe('E2E: group expense lifecycle', () => {
 
 
 ══════════════════════════════════════════════════════════════════════════════
+6. Centralized error handling & logging hardening (Week 10)
+   Commit: 939a574
+══════════════════════════════════════════════════════════════════════════════
+
+// [GenAI Use] My Prompt:
+//
+// Make our Winston error handling more comprehensive so that backend failures are
+// logged consistently instead of crashing as unhandled promise rejections — a
+// "good foundational case," not a full observability rewrite:
+//
+// 1. Add a centralized Express error-handling middleware in server.js (registered
+//    AFTER routes, with all four args) that logs via Winston and returns clean JSON.
+// 2. Split severity: 5xx → logger.error WITH stack trace; 4xx → logger.warn without
+//    one (a bad client request is not a server emergency).
+// 3. Never leak internals: 5xx responds { error: 'Internal server error' }; 4xx
+//    passes the real message through.
+// 4. Make group routes actually reach the handler — wrap async handlers + the
+//    checkMembership middleware with the catchAsync helper already used in users.js.
+// 5. Route auth.js logging through Winston (logger.warn) instead of console.error.
+// 6. Let the console transport print structured context (method, url, uid) when present.
+//
+// Change these files:
+//   - backend/server.js              (404 fallback + centralized error middleware)
+//   - backend/routes/groups.js       (catchAsync wrapper on every async route)
+//   - backend/middleware/auth.js     (console.error → logger.warn)
+//   - backend/utils/logger.js        (printf appends JSON meta when present)
+
+// [GenAI Use] LLM Response Start
+
+// app.use((err, req, res, next) => {
+//   const status = err.status || 500;
+//   const level = status >= 500 ? 'error' : 'warn';
+//   logger[level](`${req.method} ${req.originalUrl} -> ${status}: ${err.message}`,
+//     { uid: req.user?.uid, status, stack: status >= 500 ? err.stack : undefined });
+//   res.status(status).json({ error: status >= 500 ? 'Internal server error' : err.message });
+// });
+// const catchAsync = (fn) => (req, res, next) => fn(req, res, next).catch(next);
+
+// [GenAI Use] LLM Response End
+
+// [GenAI Use] Intentional Reflection:
+//
+// I owned the severity policy: I deliberately demoted invalid-token logs from
+// error to warn because flooding error-level logs with routine 401/403s would
+// make a real 5xx crash invisible — that is the whole point of log levels.
+//
+// I learned our stack is Express 5, which already auto-forwards rejected async
+// handlers, so catchAsync is belt-and-suspenders here; I kept it anyway to match
+// the existing users.js pattern and keep error flow explicit rather than relying
+// on framework magic a teammate might not know about.
+//
+// I verified, not vibe-accepted: npm test stayed 5/5 green (the e2e suite already
+// exercises every group route I wrapped), and I confirmed the response sanitizes
+// 5xx so we never leak a Firestore stack trace to the client. This connects to the
+// lecture on defense in depth — one error boundary at the API edge instead of
+// scattered try/catch.
+
+
+══════════════════════════════════════════════════════════════════════════════
+7. Dead-feature removal & repo hygiene (Week 10)
+   Commits: c18acc0, 85a3d08, 7ca8aca, c9cad67
+══════════════════════════════════════════════════════════════════════════════
+
+// [GenAI Use] My Prompt:
+//
+// Clean up the repo so that what ships matches what actually works, and graders
+// don't trip over half-built features or inconsistent tooling:
+//
+// 1. Remove the Settings page and the non-functional 2FA option (they were UI
+//    stubs with no working backend — better to cut than to fake).
+// 2. Standardize on npm and drop the stray bun.lock so there is one lockfile.
+// 3. Prune unused backend dependencies and fix outstanding ESLint errors.
+// 4. Add .env.example files (frontend + backend) so a fresh clone documents the
+//    required env vars without committing secrets.
+// 5. Confirm serviceAccountKey.json / .env stay gitignored and untracked.
+
+// [GenAI Use] LLM Response Start
+
+// Deleted Settings route + 2FA toggle; removed unused deps from backend/package.json
+// Added frontend/.env.example, backend/.env.example (VITE_API_URL, PORT, etc.)
+// .gitignore already covers **/serviceAccountKey.json and .env*
+
+// [GenAI Use] LLM Response End
+
+// [GenAI Use] Intentional Reflection:
+//
+// I made the judgment call to delete rather than hide the 2FA/Settings stubs:
+// a feature that looks real but does nothing is worse than its absence, especially
+// for a demo. AI helped me find every reference to remove, but the decision to cut
+// scope was mine and reflects honest reporting of what the project does.
+//
+// Standardizing on a single lockfile and pruning deps connects to the lecture on
+// reproducible builds — a stray bun.lock next to package-lock.json means two
+// teammates could install different trees. I verified the result by running the
+// full suite (frontend 3/3, backend 5/5) and a clean lint on a fresh install.
+
+
+══════════════════════════════════════════════════════════════════════════════
 Ongoing practice (course alignment)
 ══════════════════════════════════════════════════════════════════════════════
 

@@ -32,6 +32,30 @@ app.get('/', (req, res) => {
   res.send('Firebase API is running');
 });
 
+// 404 — no route matched
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
+// Centralized error handler — any error passed to next(err) lands here.
+// Must be last and must keep all four args so Express treats it as an error handler.
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  const status = err.status || err.statusCode || 500;
+
+  // Log server errors (5xx) loudly; treat client errors (4xx) as warnings.
+  const logLevel = status >= 500 ? 'error' : 'warn';
+  logger[logLevel](`${req.method} ${req.originalUrl} -> ${status}: ${err.message}`, {
+    uid: req.user?.uid,
+    status,
+    stack: status >= 500 ? err.stack : undefined,
+  });
+
+  res.status(status).json({
+    error: status >= 500 ? 'Internal server error' : err.message,
+  });
+});
+
 if (require.main === module) {
   app.listen(PORT, () => {
     logger.info(`Server is running on port ${PORT}`);

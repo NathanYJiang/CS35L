@@ -4,8 +4,12 @@ const { authenticateToken } = require('../middleware/auth');
 const router = express.Router();
 const db = admin.firestore();
 
+// Wrap async handlers so rejected promises reach the central error handler
+// instead of becoming unhandled rejections.
+const catchAsync = (fn) => (req, res, next) => fn(req, res, next).catch(next);
+
 // MIDDLEWARE: Verifies group exists and user is a member
-const checkMembership = async (req, res, next) => {
+const checkMembership = catchAsync(async (req, res, next) => {
   const groupDoc = await db.collection('groups').doc(req.params.id).get();
   if (!groupDoc.exists) return res.status(404).json({ error: 'Group not found' });
   
@@ -16,26 +20,26 @@ const checkMembership = async (req, res, next) => {
   
   req.groupData = data; // Pass data to the next function to save a DB call
   next();
-};
+});
 
 // --- ROUTES ---
 
 // Get all groups for user
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', authenticateToken, catchAsync(async (req, res) => {
   const snapshot = await db.collection('groups').where('members', 'array-contains', req.user.uid).get();
   const groups = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   res.json(groups);
-});
+}));
 
 // Create a new group
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, catchAsync(async (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: 'Group name required' });
 
   const newGroup = { name, created_by: req.user.uid, members: [req.user.uid] };
   const doc = await db.collection('groups').add(newGroup);
   res.status(201).json({ id: doc.id, ...newGroup });
-});
+}));
 
 // Get group details
 router.get('/:id', authenticateToken, checkMembership, (req, res) => {
@@ -43,7 +47,7 @@ router.get('/:id', authenticateToken, checkMembership, (req, res) => {
 });
 
 // Get group members (simplified resolving)
-router.get('/:id/members', authenticateToken, checkMembership, async (req, res) => {
+router.get('/:id/members', authenticateToken, checkMembership, catchAsync(async (req, res) => {
   const memberPromises = req.groupData.members.map(async (uid) => {
     const userDoc = await db.collection('users').doc(uid).get();
     const userData = userDoc.data() || {};
@@ -56,10 +60,10 @@ router.get('/:id/members', authenticateToken, checkMembership, async (req, res) 
 
   const members = await Promise.all(memberPromises);
   res.json(members);
-});
+}));
 
 // Add user to group
-router.post('/:id/members', authenticateToken, checkMembership, async (req, res) => {
+router.post('/:id/members', authenticateToken, checkMembership, catchAsync(async (req, res) => {
   const { userId } = req.body;
   if (req.groupData.members.includes(userId)) return res.status(400).json({ error: 'Already a member' });
 
@@ -67,16 +71,16 @@ router.post('/:id/members', authenticateToken, checkMembership, async (req, res)
     members: admin.firestore.FieldValue.arrayUnion(userId)
   });
   res.status(201).json({ message: 'User added' });
-});
+}));
 
 // Get expenses
-router.get('/:id/expenses', authenticateToken, checkMembership, async (req, res) => {
+router.get('/:id/expenses', authenticateToken, checkMembership, catchAsync(async (req, res) => {
   const snap = await db.collection('groups').doc(req.params.id).collection('expenses').orderBy('createdAt', 'desc').get();
   res.json(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-});
+}));
 
 // Add expense
-router.post('/:id/expenses', authenticateToken, checkMembership, async (req, res) => {
+router.post('/:id/expenses', authenticateToken, checkMembership, catchAsync(async (req, res) => {
   const { amount, purpose, paidBy, splitBetween } = req.body;
   
   if (!amount || !purpose || !splitBetween?.length) {
@@ -94,10 +98,10 @@ router.post('/:id/expenses', authenticateToken, checkMembership, async (req, res
 
   const doc = await db.collection('groups').doc(req.params.id).collection('expenses').add(expense);
   res.status(201).json({ id: doc.id, ...expense });
-});
+}));
 
 // Get settlements (payments recorded between members)
-router.get('/:id/settlements', authenticateToken, checkMembership, async (req, res) => {
+router.get('/:id/settlements', authenticateToken, checkMembership, catchAsync(async (req, res) => {
   const snap = await db
     .collection('groups')
     .doc(req.params.id)
@@ -105,10 +109,10 @@ router.get('/:id/settlements', authenticateToken, checkMembership, async (req, r
     .orderBy('createdAt', 'desc')
     .get();
   res.json(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-});
+}));
 
 // Record a settlement (from = payer, to = recipient)
-router.post('/:id/settlements', authenticateToken, checkMembership, async (req, res) => {
+router.post('/:id/settlements', authenticateToken, checkMembership, catchAsync(async (req, res) => {
   const { toUserId, amount } = req.body;
   const fromUserId = req.user.uid;
   const numericAmount = Number(amount);
@@ -142,10 +146,10 @@ router.post('/:id/settlements', authenticateToken, checkMembership, async (req, 
     amount: settlement.amount,
     createdBy: settlement.createdBy,
   });
-});
+}));
 
 // Delete expense
-router.delete('/:id/expenses/:expenseId', authenticateToken, async (req, res) => {
+router.delete('/:id/expenses/:expenseId', authenticateToken, catchAsync(async (req, res) => {
   const expenseRef = db.collection('groups').doc(req.params.id).collection('expenses').doc(req.params.expenseId);
   const doc = await expenseRef.get();
 
@@ -154,6 +158,6 @@ router.delete('/:id/expenses/:expenseId', authenticateToken, async (req, res) =>
 
   await expenseRef.delete();
   res.json({ message: 'Deleted' });
-});
+}));
 
 module.exports = router;
