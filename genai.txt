@@ -273,7 +273,7 @@ describe('E2E: group expense lifecycle', () => {
 
 ══════════════════════════════════════════════════════════════════════════════
 6. Centralized error handling & logging hardening (Week 10)
-   Commit: 939a574
+   Commit: c171db0
 ══════════════════════════════════════════════════════════════════════════════
 
 // [GenAI Use] My Prompt:
