@@ -37,6 +37,10 @@ npm install`
 
 To ensure the system operates properly, run `npm run test`
 
+## UML Entity-Relation diagram
+
+!(docs/erDiagram.png)
+
 ## UML Sequence Diagrams
 
 Below are sequence diagrams for the core flows in endetted. Each diagram shows the interaction between the **User**, **React Frontend** (browser), **Express Backend** (Node.js server), **Firebase Auth**, and **Cloud Firestore**.
