@@ -39,7 +39,7 @@ To ensure the system operates properly, run `npm run test`
 
 ## UML Entity-Relation diagram
 
-!(docs/erDiagram.png)
+![](docs/erDiagram.png)
 
 ## UML Sequence Diagrams
 
